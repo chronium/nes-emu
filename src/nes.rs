@@ -2,22 +2,25 @@ use cart::NESCart;
 use mem::Memory;
 use cpu::NMOS6502;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 #[derive(Debug)]
-pub struct NES<'a> {
-    pub cart: &'a NESCart,
-    pub mem: Memory<'a>,
-    pub cpu: NMOS6502<'a>
+pub struct NES {
+    pub cart: Rc<RefCell<NESCart>>,
+    pub mem: Memory,
+    pub cpu: NMOS6502
 }
 
-impl<'a> NES<'a> {
-    pub fn new(cart: &'a NESCart) -> Self {
-        let mem = Memory::new(cart);
+impl NES {
+    pub fn new(cart: Rc<RefCell<NESCart>>) -> Self {
+        let mem = Memory::new(cart.clone());
         let cpu = NMOS6502::new(box mem);
 
         NES {
-            cart: cart,
+            cart: cart.clone(),
             mem: Memory {
-                cart: cart
+                cart: cart.clone()
             },
             cpu: cpu
         }
@@ -27,11 +30,11 @@ impl<'a> NES<'a> {
         self.cpu.reset();
     }
 
-    pub unsafe fn step(&'a mut self) {
+    pub unsafe fn step(&mut self) {
         self.cpu.step();
     }
 
-    pub unsafe fn run(&'a mut self) {
+    pub unsafe fn run(&mut self) {
         loop {
             self.step();
         };

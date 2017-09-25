@@ -19,8 +19,8 @@ pub enum Opcode {
 #[derive(Debug)]
 pub struct Instruction(pub Opcode, pub Value);
 
-impl<'a> From<&'a mut NMOS6502<'a>> for Instruction {
-    fn from(cpu: &'a mut NMOS6502<'a>) -> Self {
+impl<'a> From<&'a mut NMOS6502> for Instruction {
+    fn from(cpu: &'a mut NMOS6502) -> Self {
         match cpu.read8_pc() {
             0xA9 => immediate!(LDA, cpu),
             op => Instruction(Opcode::Unknown(op), Value::Implied),

@@ -23,6 +23,9 @@ use std::io;
 use std::io::prelude::*;
 use std::fs::File;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 
@@ -57,11 +60,10 @@ fn main() {
 
     let cart = NESCart::from(rom_raw);
 
-    let nes = &mut NES::new(&cart);
+    let nes = &mut NES::new(Rc::new(RefCell::new(cart)));
     unsafe { 
         nes.reset();
         nes.run();
-        //nes.run();
     }
 
     //println!("{:?}", &nes.cpu);
