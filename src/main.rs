@@ -61,12 +61,12 @@ fn main() {
     let cart = NESCart::from(rom_raw);
 
     let nes = &mut NES::new(Rc::new(RefCell::new(cart)));
-    unsafe { 
-        nes.reset();
-        nes.run();
-    }
+    nes.reset();
+    //nes.run();
+    nes.step();
+    nes.step();
 
-    //println!("{:?}", &nes.cpu);
+    println!("{:?}", &nes.cpu);
 
     /*let sprite_bytes = [0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x7Eu8, 0x3Cu8,
                         0x3Cu8, 0x7Eu8, 0x7Eu8, 0xFFu8, 0xFFu8, 0xFFu8, 0x42u8, 0x00u8];

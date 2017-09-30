@@ -26,17 +26,15 @@ impl NES {
         }
     }
 
-    pub unsafe fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.cpu.reset();
     }
 
-    pub unsafe fn step(&mut self) {
+    pub fn step(&mut self) {
         self.cpu.step();
     }
 
-    pub unsafe fn run(&mut self) {
-        loop {
-            self.step();
-        };
+    pub fn run(&mut self) {
+        self.step();
     }
 }

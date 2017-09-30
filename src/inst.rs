@@ -1,5 +1,8 @@
 use cpu::NMOS6502;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 #[derive(Debug, PartialEq)]
 pub enum Value {
     Implied,
@@ -19,11 +22,11 @@ pub enum Opcode {
 #[derive(Debug)]
 pub struct Instruction(pub Opcode, pub Value);
 
-impl<'a> From<&'a mut NMOS6502> for Instruction {
-    fn from(cpu: &'a mut NMOS6502) -> Self {
-        match cpu.read8_pc() {
-            0xA9 => immediate!(LDA, cpu),
-            op => Instruction(Opcode::Unknown(op), Value::Implied),
+impl Instruction {
+    pub fn get(cpu: &mut NMOS6502) -> (u16, Self) {
+        match {cpu.read8_pc()} {
+            0xA9 => (2, immediate!(LDA, cpu)),
+            op => (0, Instruction(Opcode::Unknown(op), Value::Implied)),
         }
     }
 }

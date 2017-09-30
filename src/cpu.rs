@@ -1,10 +1,12 @@
-use inst::Instruction;
+use inst::{Instruction, Value};
 use mem::Memory;
+
+use std::cell::RefCell;
+use std::rc::Rc;
 
 bitflags! {
     #[derive(Default)]
     pub struct PFlag: u8 {
-        const NONE   = 0b00000000;
         const FLAG_C = 0b00000001;
         const FLAG_Z = 0b00000010;
         const FLAG_I = 0b00000100;
@@ -15,7 +17,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NMOS6502 {
     mem: Box<Memory>,
 
@@ -40,7 +42,7 @@ impl NMOS6502 {
             y: 0u8,
             sp: 0u8,
             pc: 0u16,
-            p_flags: PFlag::NONE,
+            p_flags: PFlag::empty(),
         }
     }
 
@@ -50,7 +52,22 @@ impl NMOS6502 {
 
     pub fn step(&mut self) {
         print!("0x{:4X}: ", self.pc);
-        match Instruction::from(self) {
+        let (adv, inst) = Instruction::get(&mut self.clone());
+        self.pc += adv;
+        match inst {
+            Instruction(LDA, Value::Immediate(val)) => {
+                println!("LDA $#{:X}", val);
+
+                self.a = val;
+
+                if val == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                }
+
+                if val & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_C);
+                }
+            }
             instr => println!("{:?}", instr),
         }
     }

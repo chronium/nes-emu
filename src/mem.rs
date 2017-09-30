@@ -3,7 +3,7 @@ use cart::NESCart;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Memory {
     pub cart: Rc<RefCell<NESCart>>,
 }
@@ -19,7 +19,7 @@ impl Memory {
         match addr {
             0x8000...0xBFFF => self.cart.borrow_mut().prg_rom[addr as usize - 0x8000],
             0xC000...0xFFFF => self.cart.borrow_mut().prg_rom[addr as usize - 0xC000],
-            _ => unimplemented!()
+            _ => panic!("addr: 0x{:X}", addr)
         }
     }
 }
