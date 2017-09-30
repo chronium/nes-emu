@@ -10,11 +10,13 @@ extern crate minifb;
 
 use minifb::{Key, WindowOptions, Window, Scale};
 
+mod ppuregs;
 mod cart;
 mod inst;
 mod nes;
 mod mem;
 mod cpu;
+mod ppu;
 
 use cart::NESCart;
 use nes::NES;
@@ -63,8 +65,10 @@ fn main() {
     let nes = &mut NES::new(Rc::new(RefCell::new(cart)));
     nes.reset();
     //nes.run();
-    nes.step();
-    nes.step();
+    while match nes.step() {
+        Ok(_) => true,
+        Err(_) => false,
+    } {}
 
     println!("{:?}", &nes.cpu);
 
