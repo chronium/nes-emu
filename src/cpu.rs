@@ -1,5 +1,5 @@
 use ppuregs::PPUCTL;
-use inst::{Instruction, Value};
+use inst::{Instruction, Value, Opcode};
 use mem::Memory;
 use ppu::PPU;
 
@@ -15,7 +15,7 @@ bitflags! {
         const FLAG_D = 0b00001000;
         const FLAG_B = 0b00010000;
         const FLAG_V = 0b01000000;
-        const FLAG_S = 0b10000000;
+        const FLAG_N = 0b10000000;
     }
 }
 
@@ -59,8 +59,8 @@ impl NMOS6502 {
         let (adv, inst) = Instruction::get(&mut self.clone());
         self.pc += adv;
         match inst {
-            Instruction(LDA, Value::Immediate(val)) => {
-                println!("LDA #${:X}", val);
+            Instruction(Opcode::LDA, Value::Immediate(val)) => {
+                println!("LDA #{:X}", val);
 
                 self.a = val;
 
@@ -69,20 +69,60 @@ impl NMOS6502 {
                 }
 
                 if val & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_C);
+                    self.p_flags.insert(PFlag::FLAG_N);
                 }
 
                 Ok(0u8)
             }
-            Instruction(STA, Value::Absolute(addr)) => {
-                println!("STA @${:04X}", addr);
+            Instruction(Opcode::LDA, Value::Absolute(addr)) => {
+                println!("LDA @{:04X}", addr);
+                let val = self.read8(addr);
+                self.a = val;
+
+                if val == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                }
+
+                if val & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::STA, Value::Absolute(addr)) => {
+                println!("STA @{:04X}", addr);
 
                 let a = self.a;
                 self.write8(addr, a);
 
                 Ok(0u8)
             }
+            Instruction(Opcode::BPL, Value::Relative(offs)) => {
+                println!("BPL +{:02X}", offs);
+
+                if !self.p_flags.contains(PFlag::FLAG_N) {
+                    self.pc = self.pc & 0xFF00 | (self.pc & 0xFF + offs as u16);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::BMI, Value::Relative(offs)) => {
+                println!("BPL +{:02X}", offs);
+
+                if self.p_flags.contains(PFlag::FLAG_N) {
+                    self.pc = self.pc & 0xFF00 | (self.pc & 0xFF + offs as u16);
+                }
+
+                Ok(0u8)
+            }
             instr => Err(format!("{:?}", instr)),
+        }
+    }
+
+    pub fn read8(&mut self, addr: u16) -> u8 {
+        match addr {
+            0x2002 => self.ppu.borrow().ppustatus,
+            _ => panic!(),
         }
     }
 
@@ -104,6 +144,7 @@ impl NMOS6502 {
                 println!("PPUCTRL {:X}", val);
                 self.ppu.borrow_mut().ppuctl = PPUCTL::from(val);
             }
+            0x2001 => println!("PPUMASK {:X}", val),
             _ => unimplemented!(),
         }
     }

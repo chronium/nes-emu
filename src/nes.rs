@@ -35,7 +35,12 @@ impl NES {
     }
 
     pub fn step(&mut self) -> Result<u8, String> {
-        self.cpu.step()
+        let res = self.cpu.step();
+        self.ppu.borrow_mut().step();
+        self.ppu.borrow_mut().step();
+        self.ppu.borrow_mut().step();
+
+        res
     }
 
     pub fn run(&mut self) {

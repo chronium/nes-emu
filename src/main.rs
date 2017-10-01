@@ -67,7 +67,7 @@ fn main() {
     //nes.run();
     while match nes.step() {
         Ok(_) => true,
-        Err(_) => false,
+        Err(err) => { println!("{}", err); false },
     } {}
 
     println!("{:?}", &nes.cpu);
