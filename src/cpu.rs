@@ -6,6 +6,8 @@ use ppu::PPU;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use std::fmt;
+
 bitflags! {
     #[derive(Default)]
     pub struct PFlag: u8 {
@@ -64,16 +66,20 @@ impl NMOS6502 {
         self.pc += adv;
         match inst {
             Instruction(Opcode::LDA, Value::Immediate(val)) => {
-                println!("LDA #{:X}", val);
+                println!("LDA #${:02X}", val);
 
                 self.a = val;
 
                 if val == 0 {
                     self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
                 }
 
                 if val & 0x80 == 0x80 {
                     self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
                 }
 
                 Ok(0u8)
@@ -85,10 +91,14 @@ impl NMOS6502 {
 
                 if val == 0 {
                     self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
                 }
 
                 if val & 0x80 == 0x80 {
                     self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
                 }
 
                 Ok(0u8)
@@ -102,7 +112,7 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::BPL, Value::Relative(offs)) => {
-                println!("BPL +{:02X}", offs);
+                println!("BPL {:02X}", offs);
 
                 if !self.p_flags.contains(PFlag::FLAG_N) {
                     self.pc = self.pc & 0xFF00 | (self.pc & 0xFF + offs as u16);
@@ -111,7 +121,7 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::BMI, Value::Relative(offs)) => {
-                println!("BPL +{:02X}", offs);
+                println!("BPL {:02X}", offs);
 
                 if self.p_flags.contains(PFlag::FLAG_N) {
                     self.pc = self.pc & 0xFF00 | (self.pc & 0xFF + offs as u16);
@@ -133,10 +143,14 @@ impl NMOS6502 {
 
                 if val == 0 {
                     self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
                 }
 
                 if val & 0x80 == 0x80 {
                     self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
                 }
 
                 Ok(0u8)
@@ -155,6 +169,65 @@ impl NMOS6502 {
                 let pc = self.pc;
                 self.push16(pc);
                 self.pc = addr;
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::NOP, Value::Implied) => {
+                println!("NOP");
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::SEC, Value::Implied) => {
+                println!("SEC");
+
+                self.p_flags.insert(PFlag::FLAG_C);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::BCS, Value::Relative(offs)) => {
+                let pc = self.pc + offs as u16;
+                println!("BCS ${:04X}", pc);
+
+                if self.p_flags.contains(PFlag::FLAG_C) {
+                    self.pc = pc;
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::CLC, Value::Implied) => {
+                println!("CLC");
+
+                self.p_flags.remove(PFlag::FLAG_C);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::BCC, Value::Relative(offs)) => {
+                let pc = self.pc + offs as u16;
+                println!("BCC ${:04X}", pc);
+
+                if !self.p_flags.contains(PFlag::FLAG_C) {
+                    self.pc = pc;
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::BEQ, Value::Relative(offs)) => {
+                let pc = self.pc + offs as u16;
+                println!("BEQ ${:04X}", pc);
+
+                if self.p_flags.contains(PFlag::FLAG_Z) {
+                    self.pc = pc;
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::BNE, Value::Relative(offs)) => {
+                let pc = self.pc + offs as u16;
+                println!("BNE ${:04X}", pc);
+
+                if !self.p_flags.contains(PFlag::FLAG_Z) {
+                    self.pc = pc;
+                }
 
                 Ok(0u8)
             }
@@ -204,5 +277,9 @@ impl NMOS6502 {
 
     pub fn set_pc(&mut self, val: u16) {
         self.pc = val;
+    }
+
+    pub fn set_sp(&mut self, val: u8) {
+        self.sp = val;
     }
 }
