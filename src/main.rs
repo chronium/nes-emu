@@ -1,4 +1,4 @@
-#![feature(box_syntax, box_patterns)]
+#![feature(box_syntax, box_patterns, inclusive_range_syntax)]
 
 #[macro_use]
 extern crate clap;

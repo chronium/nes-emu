@@ -28,26 +28,25 @@ impl Memory {
 
     pub fn read8(&self, addr: u16) -> u8 {
         let mapper = self.cart.borrow().header.mapper;
-        match mapper {
-            0 => {
-                match addr {
-                    0x0000...0x2000 => self.ram[addr as usize % 0x800],
-                    0x8000...0xBFFF => self.cart.borrow_mut().prg_rom[addr as usize - 0x8000],
-                    0xC000...0xFFFF => self.cart.borrow_mut().prg_rom[addr as usize - 0xC000],
-                    _ => panic!("addr: 0x{:X}", addr)
+        match addr {
+            0x0000...0x2000 => self.ram[addr as usize % 0x800],
+            0x8000...0xFFFF =>
+                match mapper {
+                    0 => match addr {
+                        0x8000...0xBFFF => self.cart.borrow_mut().prg_rom[addr as usize - 0x8000],
+                        0xC000...0xFFFF => self.cart.borrow_mut().prg_rom[addr as usize - 0xC000],
+                        _ => panic!("addr: 0x{:X}", addr)
+                    },
+                    1 => match addr{
+                        0x8000...0xBFFF => self.cart.borrow_mut().prg_rom[addr as usize - 0x8000],
+                        0xC000...0xFFFF => self.cart.borrow_mut().prg_rom[addr as usize - 0x8000],
+                        _ => panic!("addr: 0x{:X}", addr)
+                    }
+                    _ => panic!("Unimplemented mapper: {}", mapper)
                 }
-            },
-            1 => {
-                match addr {
-                    0x0000...0x2000 => self.ram[addr as usize % 0x800],
-                    0x8000...0xBFFF => self.cart.borrow_mut().prg_rom[addr as usize - 0x8000],
-                    0xC000...0xFFFF => self.cart.borrow_mut().prg_rom[addr as usize - 0x8000],
-                    _ => panic!("addr: 0x{:X}", addr)
-                }
-            }
-            _ => panic!("Unimplemented mapper: {}", mapper)
+            _ => panic!("addr: 0x{:X}", addr)
         }
-    }
+   }
 
     pub fn write8(&mut self, addr: u16, val: u8) {
         match addr {
