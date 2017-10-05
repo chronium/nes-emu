@@ -122,6 +122,36 @@ impl NMOS6502 {
             Instruction(Opcode::JMP, Value::Absolute(addr)) => {
                 println!("JMP ${:04X}", addr);
 
+                self.pc = addr;
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::LDX, Value::Immediate(val)) => {
+                println!("LDX #${:02X}", val);
+
+                self.x = val;
+
+                if val == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                }
+
+                if val & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::STX, Value::ZeroPage(zpg)) => {
+                let x = self.x;
+                println!("STX ${:02X} = {:02X}", zpg, self.x);
+
+                self.mem.borrow_mut().write8(zpg as u16, self.x);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::JSR, Value::Absolute(addr)) => {
+                println!("JSR ${:04X}", addr);
+
                 let pc = self.pc;
                 self.push16(pc);
                 self.pc = addr;
