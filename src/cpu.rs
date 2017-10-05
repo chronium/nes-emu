@@ -121,7 +121,7 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::BMI, Value::Relative(offs)) => {
-                println!("BPL {:02X}", offs);
+                println!("BMI {:02X}", offs);
 
                 if self.p_flags.contains(PFlag::FLAG_N) {
                     self.pc = self.pc & 0xFF00 | (self.pc & 0xFF + offs as u16);
@@ -156,8 +156,7 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::STX, Value::ZeroPage(zpg)) => {
-                let x = self.x;
-                println!("STX ${:02X} = {:02X}", zpg, self.x);
+                println!("STX ${:02X}", zpg);
 
                 self.mem.borrow_mut().write8(zpg as u16, self.x);
 
@@ -227,6 +226,52 @@ impl NMOS6502 {
 
                 if !self.p_flags.contains(PFlag::FLAG_Z) {
                     self.pc = pc;
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::SEI, Value::Implied) => {
+                println!("SEI");
+
+                self.p_flags.insert(PFlag::FLAG_I);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::CLD, Value::Implied) => {
+                println!("CLD");
+
+                self.p_flags.remove(PFlag::FLAG_D);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::STA, Value::ZeroPage(zpg)) => {
+                println!("STA ${:02X}", zpg);
+
+                self.mem.borrow_mut().write8(zpg as u16, self.a);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::BIT, Value::ZeroPage(zpg)) => {
+                println!("BIT ${:02X}", zpg);
+
+                let val = self.mem.borrow().read8(zpg as u16);
+
+                if val & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                if val & 0x40 == 0x40 {
+                    self.p_flags.insert(PFlag::FLAG_V);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_V);
+                }
+
+                if val & self.a == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
                 }
 
                 Ok(0u8)

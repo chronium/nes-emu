@@ -34,16 +34,19 @@ pub enum Opcode {
     BPL,    // 10
     CLC,    // 18
     JSR,    // 20
+    BIT,    // 24
     BMI,    // 30
     SEC,    // 38
     JMP,    // 4C
+    SEI,    // 78
     STX,    // 86
-    STA,    // 8D
+    STA,    // 85 8D
     BCC,    // 90
     LDX,    // A2
     LDA,    // A9 AD
     BCS,    // B0
     BNE,    // D0
+    CLD,    // D8
     NOP,    // EA
     BEQ,    // F0
     Unknown(u8),
@@ -60,7 +63,10 @@ impl Instruction {
             0x30 => rel!(BMI, cpu),
             0x38 => imp!(SEC, cpu),
             0x20 => abs!(JSR, cpu),
+            0x24 => zpg!(BIT, cpu),
             0x4C => abs!(JMP, cpu),
+            0x78 => imp!(SEI, cpu),
+            0x85 => zpg!(STA, cpu),
             0x86 => zpg!(STX, cpu),
             0x8D => abs!(STA, cpu),
             0x90 => rel!(BCC, cpu),
@@ -69,6 +75,7 @@ impl Instruction {
             0xAD => abs!(LDA, cpu),
             0xB0 => rel!(BCS, cpu),
             0xD0 => rel!(BNE, cpu),
+            0xD8 => imp!(CLD, cpu),
             0xEA => imp!(NOP, cpu),
             0xF0 => rel!(BEQ, cpu),
             op => (0, Instruction(Opcode::Unknown(op), Value::Implied)),
