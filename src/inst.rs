@@ -24,6 +24,7 @@ macro_rules! relative {
 pub enum Opcode {
     BPL,    // 10
     BMI,    // 30
+    JMP,    // 4C
     LDA,    // A9 AD
     STA,    // 8D
     Unknown(u8),
@@ -37,6 +38,7 @@ impl Instruction {
         match {cpu.read8_pc()} {
             0x10 => (2, relative!(BPL, cpu)),
             0x30 => (2, relative!(BMI, cpu)),
+            0x4C => (3, absolute!(JMP, cpu)),
             0x8D => (3, absolute!(STA, cpu)),
             0xA9 => (2, immediate!(LDA, cpu)),
             0xAD => (3, absolute!(LDA, cpu)),

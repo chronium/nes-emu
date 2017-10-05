@@ -10,7 +10,8 @@ pub struct NESHeader {
     prg_ram_sz: usize,
     flag_9: u8,
     flag_10: u8,
-    zero: [u8; 5]
+    zero: [u8; 5],
+    pub mapper: u8,
 }
 
 impl From<Vec<u8>> for NESHeader {
@@ -30,6 +31,8 @@ impl From<Vec<u8>> for NESHeader {
         let flag_10 = cart[10];
         let zero = [0u8; 5];
 
+        let mapper = (flag_6 & 0xF0) >> 4 | (flag_7 & 0xF0);
+
         NESHeader {
             nes: nes,
             prg_rom_sz: prg_rom as usize * 16384,
@@ -40,6 +43,7 @@ impl From<Vec<u8>> for NESHeader {
             flag_9: flag_9,
             flag_10: flag_10,
             zero: zero,
+            mapper: mapper,
         }
     }
 }
@@ -61,6 +65,8 @@ impl<'a> From<&'a Vec<u8>> for NESHeader {
         let flag_10 = cart[10];
         let zero = [0u8; 5];
 
+        let mapper = (flag_6 & 0xF0) >> 4 | (flag_7 & 0xF0);
+
         NESHeader {
             nes: nes,
             prg_rom_sz: prg_rom as usize * 16384,
@@ -71,6 +77,7 @@ impl<'a> From<&'a Vec<u8>> for NESHeader {
             flag_9: flag_9,
             flag_10: flag_10,
             zero: zero,
+            mapper: mapper,
         }
     }
 }

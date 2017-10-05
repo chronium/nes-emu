@@ -51,6 +51,7 @@ fn main() {
         (author: AUTHORS)
         (about: "Rustic NES Emulator")
         (@arg INPUT: +required "ROM file to load")
+        (@arg pc: -s +takes_value "Set PC execution start")
     ).get_matches();
 
     let rom_path = matches.value_of("INPUT").unwrap();
@@ -64,6 +65,11 @@ fn main() {
 
     let nes = &mut NES::new(Rc::new(RefCell::new(cart)));
     nes.reset();
+
+    if matches.is_present("pc") {
+        nes.cpu.set_pc(u16::from_str_radix(matches.value_of("pc").unwrap(), 16).unwrap());
+    }
+
     //nes.run();
     while match nes.step() {
         Ok(_) => true,

@@ -9,22 +9,20 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub struct NES {
     pub cart: Rc<RefCell<NESCart>>,
-    pub mem: Memory,
+    pub mem: Rc<RefCell<Memory>>,
     pub cpu: NMOS6502,
     pub ppu: Rc<RefCell<PPU>>,
 }
 
 impl NES {
     pub fn new(cart: Rc<RefCell<NESCart>>) -> Self {
-        let mem = Memory::new(cart.clone());
+        let mem = Rc::new(RefCell::new(Memory::new(cart.clone())));
         let ppu = Rc::new(RefCell::new(PPU::new(cart.clone(), 0u8)));
-        let cpu = NMOS6502::new(box mem, ppu.clone());
+        let cpu = NMOS6502::new(mem.clone(), ppu.clone());
 
         NES {
             cart: cart.clone(),
-            mem: Memory {
-                cart: cart.clone()
-            },
+            mem: mem,
             cpu: cpu,
             ppu: ppu,
         }

@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use ppuregs::PPUCTL;
 use cart::NESCart;
+use cpu::NMOS6502;
 
 const HEIGHT: u16 = 261;
 const WIDTH: u16 = 340; 

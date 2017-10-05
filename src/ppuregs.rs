@@ -46,10 +46,10 @@ pub enum BaseNameTable {
 impl From<BaseNameTable> for u16 {
     fn from(nt: BaseNameTable) -> Self {
         match nt {
-            Zero => 0x2000,
-            One => 0x2400,
-            Two => 0x2800,
-            Three => 0x2C00,
+            BaseNameTable::Zero => 0x2000,
+            BaseNameTable::One => 0x2400,
+            BaseNameTable::Two => 0x2800,
+            BaseNameTable::Three => 0x2C00,
         }
     }
 }
@@ -91,8 +91,8 @@ pub enum SpriteAddr {
 impl From<SpriteAddr> for u16 {
     fn from(addr: SpriteAddr) -> Self {
         match addr {
-            Zero => 0x0000,
-            One => 0x1000,
+            SpriteAddr::Zero => 0x0000,
+            SpriteAddr::One => 0x1000,
         }
     }
 }
@@ -116,8 +116,8 @@ pub enum BGPatternTableAddr {
 impl From<BGPatternTableAddr> for u16 {
     fn from(val: BGPatternTableAddr) -> Self {
         match val {
-            Zero => 0x0000,
-            One => 0x1000,
+            BGPatternTableAddr::Zero => 0x0000,
+            BGPatternTableAddr::One => 0x1000,
         }
     }
 }
