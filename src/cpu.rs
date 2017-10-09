@@ -61,7 +61,7 @@ impl NMOS6502 {
     }
 
     pub fn step(&mut self) -> Result<u8, String> {
-        print!("0x{:4X}: ", self.pc);
+        print!("0x{:04X}: ", self.pc);
         let (adv, inst) = Instruction::get(&mut self.clone());
         self.pc += adv;
         match inst {
@@ -115,7 +115,7 @@ impl NMOS6502 {
                 println!("BPL {:02X}", offs);
 
                 if !self.p_flags.contains(PFlag::FLAG_N) {
-                    self.pc = self.pc & 0xFF00 | (self.pc & 0xFF + offs as u16);
+                    self.pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
                 }
 
                 Ok(0u8)
@@ -124,7 +124,7 @@ impl NMOS6502 {
                 println!("BMI {:02X}", offs);
 
                 if self.p_flags.contains(PFlag::FLAG_N) {
-                    self.pc = self.pc & 0xFF00 | (self.pc & 0xFF + offs as u16);
+                    self.pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
                 }
 
                 Ok(0u8)
@@ -184,7 +184,7 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::BCS, Value::Relative(offs)) => {
-                let pc = self.pc + offs as u16;
+                let pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
                 println!("BCS ${:04X}", pc);
 
                 if self.p_flags.contains(PFlag::FLAG_C) {
@@ -201,7 +201,7 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::BCC, Value::Relative(offs)) => {
-                let pc = self.pc + offs as u16;
+                let pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
                 println!("BCC ${:04X}", pc);
 
                 if !self.p_flags.contains(PFlag::FLAG_C) {
@@ -211,7 +211,7 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::BEQ, Value::Relative(offs)) => {
-                let pc = self.pc + offs as u16;
+                let pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
                 println!("BEQ ${:04X}", pc);
 
                 if self.p_flags.contains(PFlag::FLAG_Z) {
@@ -221,7 +221,7 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::BNE, Value::Relative(offs)) => {
-                let pc = self.pc + offs as u16;
+                let pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
                 println!("BNE ${:04X}", pc);
 
                 if !self.p_flags.contains(PFlag::FLAG_Z) {
@@ -276,6 +276,94 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
+            Instruction(Opcode::TXS, Value::Implied) => {
+                println!("TXS");
+
+                self.sp = self.x;
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::BVS, Value::Relative(offs)) => {
+                let pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
+                println!("BVS ${:04X}", pc);
+
+                if self.p_flags.contains(PFlag::FLAG_V) {
+                    self.pc = pc;
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::BVC, Value::Relative(offs)) => {
+                let pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
+                println!("BVC ${:04X}", pc);
+
+                if !self.p_flags.contains(PFlag::FLAG_V) {
+                    self.pc = pc;
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::RTS, Value::Implied) => {
+                println!("RTS");
+
+                let ret = self.pop16();
+                self.pc = ret;
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::PHP, Value::Implied) => {
+                println!("PHP");
+
+                let p = self.p_flags.bits;
+                self.push8(p);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::SED, Value::Implied) => {
+                println!("SED");
+
+                self.p_flags.insert(PFlag::FLAG_D);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::PLA, Value::Implied) => {
+                println!("PLA");
+                let val = self.pop8();
+                self.a = val;
+
+                if val == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if val & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::AND, Value::Immediate(val)) => {
+                println!("AND ${:02X}", val);
+                let a = self.a & val;
+                self.a = a;
+
+                if a == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if a & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
             instr => Err(format!("{:?}", instr)),
         }
     }
@@ -316,8 +404,18 @@ impl NMOS6502 {
     }
 
     fn push16(&mut self, val: u16) {
-        self.push8((val & 0xFF >> 0) as u8);
-        self.push8((val & 0xFF00 >> 8) as u8);
+        self.push8((val >> 0) as u8);
+        self.push8((val >> 8) as u8);
+    }
+
+    fn pop8(&mut self) -> u8 {
+        let ret = self.mem.borrow().read8(0x100 | self.sp as u16);
+        self.sp += 1;
+        ret
+    }
+
+    fn pop16(&mut self) -> u16 {
+        ((self.pop8() as u16) << 8) | self.pop8() as u16
     }
 
     pub fn set_pc(&mut self, val: u16) {
