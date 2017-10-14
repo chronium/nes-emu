@@ -112,19 +112,21 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::BPL, Value::Relative(offs)) => {
-                println!("BPL {:02X}", offs);
+                let pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
+                println!("BPL ${:04X}", pc);
 
                 if !self.p_flags.contains(PFlag::FLAG_N) {
-                    self.pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
+                    self.pc = pc;
                 }
 
                 Ok(0u8)
             }
             Instruction(Opcode::BMI, Value::Relative(offs)) => {
-                println!("BMI {:02X}", offs);
+                let pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
+                println!("BMI ${:04X}", pc);
 
                 if self.p_flags.contains(PFlag::FLAG_N) {
-                    self.pc = ((self.pc as i32 + offs as i32) & 0xFFFF) as u16;
+                    self.pc = pc;
                 }
 
                 Ok(0u8)
@@ -361,6 +363,72 @@ impl NMOS6502 {
                 } else {
                     self.p_flags.remove(PFlag::FLAG_N);
                 }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::CMP, Value::Immediate(val)) => {
+                println!("CMP #${:02X}", val);
+
+                if self.a == val {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if self.a < val {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                if self.a > val {
+                    self.p_flags.insert(PFlag::FLAG_C);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_C);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::PHA, Value::Implied) => {
+                println!("PHA");
+
+                let a = self.a;
+                self.push8(a);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::PLP, Value::Implied) => {
+                println!("PLP");
+
+                let mut res = self.pop8();
+                res = res & 0b11001111;
+                self.p_flags.bits = res;
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::ORA, Value::Immediate(val)) => {
+                println!("ORA ${:02X}", val);
+                let a = self.a | val;
+                self.a = a;
+
+                if a == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if a & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::CLV, Value::Implied) => {
+                println!("CLV");
+
+                self.p_flags.remove(PFlag::FLAG_V);
 
                 Ok(0u8)
             }

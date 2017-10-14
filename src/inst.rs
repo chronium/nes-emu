@@ -32,13 +32,16 @@ macro_rules! zpg {
 #[derive(Debug)]
 pub enum Opcode {
     PHP,    // 08
+    ORA,    // 09
     BPL,    // 10
     CLC,    // 18
     JSR,    // 20
     BIT,    // 24
+    PLP,    // 28
     AND,    // 29
     BMI,    // 30
     SEC,    // 38
+    PHA,    // 48
     JMP,    // 4C
     BVC,    // 50
     RTS,    // 60
@@ -52,6 +55,8 @@ pub enum Opcode {
     LDX,    // A2
     LDA,    // A9 AD
     BCS,    // B0
+    CLV,    // B8
+    CMP,    // C9
     BNE,    // D0
     CLD,    // D8
     NOP,    // EA
@@ -67,13 +72,16 @@ impl Instruction {
     pub fn get(cpu: &mut NMOS6502) -> (u16, Self) {
         match {cpu.read8_pc()} {
             0x08 => imp!(PHP, cpu),
+            0x09 => imm!(ORA, cpu),
             0x10 => rel!(BPL, cpu),
             0x18 => imp!(CLC, cpu),
             0x30 => rel!(BMI, cpu),
             0x38 => imp!(SEC, cpu),
             0x20 => abs!(JSR, cpu),
             0x24 => zpg!(BIT, cpu),
+            0x28 => imp!(PLP, cpu),
             0x29 => imm!(AND, cpu),
+            0x48 => imp!(PHA, cpu),
             0x4C => abs!(JMP, cpu),
             0x50 => rel!(BVC, cpu),
             0x60 => imp!(RTS, cpu),
@@ -89,6 +97,8 @@ impl Instruction {
             0xA9 => imm!(LDA, cpu),
             0xAD => abs!(LDA, cpu),
             0xB0 => rel!(BCS, cpu),
+            0xB8 => imp!(CLV, cpu),
+            0xC9 => imm!(CMP, cpu),
             0xD0 => rel!(BNE, cpu),
             0xD8 => imp!(CLD, cpu),
             0xEA => imp!(NOP, cpu),
