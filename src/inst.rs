@@ -52,6 +52,7 @@ pub enum Opcode {
     SEI,    // 78
     STX,    // 86
     STA,    // 85 8D
+    DEY,    // 88
     BCC,    // 90
     TXS,    // 9A
     LDY,    // A0
@@ -60,10 +61,14 @@ pub enum Opcode {
     BCS,    // B0
     CLV,    // B8
     CPY,    // C0
+    INY,    // C8
     CMP,    // C9
+    DEX,    // CA
     BNE,    // D0
     CLD,    // D8
     CPX,    // E0
+    INX,    // E8
+    SBC,    // E9
     NOP,    // EA
     BEQ,    // F0
     SED,    // F8
@@ -97,6 +102,7 @@ impl Instruction {
             0x78 => imp!(SEI, cpu),
             0x85 => zpg!(STA, cpu),
             0x86 => zpg!(STX, cpu),
+            0x88 => imp!(DEY, cpu),
             0x8D => abs!(STA, cpu),
             0x90 => rel!(BCC, cpu),
             0x9A => imp!(TXS, cpu),
@@ -107,10 +113,14 @@ impl Instruction {
             0xB0 => rel!(BCS, cpu),
             0xB8 => imp!(CLV, cpu),
             0xC0 => imm!(CPY, cpu),
+            0xC8 => imp!(INY, cpu),
             0xC9 => imm!(CMP, cpu),
+            0xCA => imp!(DEX, cpu),
             0xD0 => rel!(BNE, cpu),
             0xD8 => imp!(CLD, cpu),
             0xE0 => imm!(CPX, cpu),
+            0xE8 => imp!(INX, cpu),
+            0xE9 => imm!(SBC, cpu),
             0xEA => imp!(NOP, cpu),
             0xF0 => rel!(BEQ, cpu),
             0xF8 => imp!(SED, cpu),

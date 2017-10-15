@@ -551,6 +551,122 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
+            Instruction(Opcode::SBC, Value::Immediate(val)) => {
+                println!("SBC ${:02X}", val);
+                let ainit = self.a;
+                let val = val ^ 0xFF;
+
+                let mut a: u16 = self.a as u16;
+                a += val as u16;
+                a += (self.p_flags.bits & 0b1) as u16;
+                self.a = (a & 0xFF) as u8;
+
+                if self.a == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if (self.a as i8) < 0 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                if a & 0x100 == 0x100 {
+                    self.p_flags.insert(PFlag::FLAG_C);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_C);
+                }
+
+                if (ainit ^ self.a) & (val ^ self.a) & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_V);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_V);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::INY, Value::Implied) => {
+                println!("INY");
+
+                let y = self.y;
+                self.y = y.wrapping_add(1);
+
+                if self.y == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if self.y & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::INX, Value::Implied) => {
+                println!("INX");
+
+                let x = self.x;
+                self.x = x.wrapping_add(1);
+
+                if self.x == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if self.x & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::DEY, Value::Implied) => {
+                println!("DEY");
+
+                let y = self.y;
+                self.y = y.wrapping_sub(1);
+
+                if self.y == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if self.y & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::DEX, Value::Implied) => {
+                println!("DEX");
+
+                let x = self.x;
+                self.x = x.wrapping_sub(1);
+
+                if self.x == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if self.x & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
             instr => Err(format!("{:?}", instr)),
         }
     }
