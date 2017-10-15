@@ -75,7 +75,7 @@ fn main() {
         nes.cpu.set_sp(u8::from_str_radix(matches.value_of("sp").unwrap(), 16).unwrap());
     }
 
-    //nes.run();
+    nes.run();
     while match nes.step() {
         Ok(_) => true,
         Err(err) => { println!("{}", err); false },
@@ -83,8 +83,11 @@ fn main() {
 
     println!("{:?}", &nes.cpu);
 
-    /*let sprite_bytes = [0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x7Eu8, 0x3Cu8,
-                        0x3Cu8, 0x7Eu8, 0x7Eu8, 0xFFu8, 0xFFu8, 0xFFu8, 0x42u8, 0x00u8];
+    //let sprite_bytes = [0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x7Eu8, 0x3Cu8,
+                        //0x3Cu8, 0x7Eu8, 0x7Eu8, 0xFFu8, 0xFFu8, 0xFFu8, 0x42u8, 0x00u8];
+
+    /*let mut sprite_bytes: [u8; 256*16] = [0u8; 256*16];
+    sprite_bytes.copy_from_slice(&cart.chr_rom[0..256*16]);
 
     let mut buffer = vec![0u32; WIDTH * HEIGHT];
 
@@ -98,13 +101,28 @@ fn main() {
                                      panic!("{}", e);
                                  });
 
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        for y in 0..240 {
+        for y in 0..128 {
+            for x in 0..16*8 {
+                let tx = x / 8;
+                let ty = y / 8;
+                let xind = tx * 16;
+                let yind = ty * 16;
+                let ind = xind + yind * 16;
+                let b1 = ((((sprite_bytes[ind + (y % 8) + 0] as u8) >> (7 - (x % 8))) & 0b1) << 0) as u8;
+                let b2 = ((((sprite_bytes[ind + (y % 8) + 8] as u8) >> (7 - (x % 8))) & 0b1) << 1) as u8;
+                let col = b1 | b2;
+                buffer[x + y * WIDTH] = palette[col as usize];
+            }
+        }
+
+        /*for y in 0..240 {
             for x in 0..240 {
                 let col = ((((sprite_bytes[y % 8] & 0xFF) >> (x % 8)) as u8) & 0b1) | (((((sprite_bytes[(y % 8) + 8] & 0xFF) >> (x % 8)) as u8) & 0b1) << 1);
                 buffer[x + y * WIDTH] = palette[col as usize + x / 8];
             }
-        }
+        }*/
 
         window.update_with_buffer(&buffer).unwrap();
     }*/

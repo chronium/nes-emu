@@ -42,23 +42,28 @@ pub enum Opcode {
     BMI,    // 30
     SEC,    // 38
     PHA,    // 48
+    EOR,    // 49
     JMP,    // 4C
     BVC,    // 50
     RTS,    // 60
     PLA,    // 68
+    ADC,    // 69
     BVS,    // 70
     SEI,    // 78
     STX,    // 86
     STA,    // 85 8D
     BCC,    // 90
     TXS,    // 9A
+    LDY,    // A0
     LDX,    // A2
     LDA,    // A9 AD
     BCS,    // B0
     CLV,    // B8
+    CPY,    // C0
     CMP,    // C9
     BNE,    // D0
     CLD,    // D8
+    CPX,    // E0
     NOP,    // EA
     BEQ,    // F0
     SED,    // F8
@@ -82,10 +87,12 @@ impl Instruction {
             0x28 => imp!(PLP, cpu),
             0x29 => imm!(AND, cpu),
             0x48 => imp!(PHA, cpu),
+            0x49 => imm!(EOR, cpu),
             0x4C => abs!(JMP, cpu),
             0x50 => rel!(BVC, cpu),
             0x60 => imp!(RTS, cpu),
             0x68 => imp!(PLA, cpu),
+            0x69 => imm!(ADC, cpu),
             0x70 => rel!(BVS, cpu),
             0x78 => imp!(SEI, cpu),
             0x85 => zpg!(STA, cpu),
@@ -93,14 +100,17 @@ impl Instruction {
             0x8D => abs!(STA, cpu),
             0x90 => rel!(BCC, cpu),
             0x9A => imp!(TXS, cpu),
+            0xA0 => imm!(LDY, cpu),
             0xA2 => imm!(LDX, cpu),
             0xA9 => imm!(LDA, cpu),
             0xAD => abs!(LDA, cpu),
             0xB0 => rel!(BCS, cpu),
             0xB8 => imp!(CLV, cpu),
+            0xC0 => imm!(CPY, cpu),
             0xC9 => imm!(CMP, cpu),
             0xD0 => rel!(BNE, cpu),
             0xD8 => imp!(CLD, cpu),
+            0xE0 => imm!(CPX, cpu),
             0xEA => imp!(NOP, cpu),
             0xF0 => rel!(BEQ, cpu),
             0xF8 => imp!(SED, cpu),

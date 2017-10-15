@@ -369,19 +369,19 @@ impl NMOS6502 {
             Instruction(Opcode::CMP, Value::Immediate(val)) => {
                 println!("CMP #${:02X}", val);
 
-                if self.a == val {
+                if self.a.wrapping_sub(val) == 0 {
                     self.p_flags.insert(PFlag::FLAG_Z);
                 } else {
                     self.p_flags.remove(PFlag::FLAG_Z);
                 }
 
-                if self.a < val {
+                if (self.a.wrapping_sub(val)) & 0x80 == 0x80 {
                     self.p_flags.insert(PFlag::FLAG_N);
                 } else {
                     self.p_flags.remove(PFlag::FLAG_N);
                 }
 
-                if self.a > val {
+                if self.a >= val {
                     self.p_flags.insert(PFlag::FLAG_C);
                 } else {
                     self.p_flags.remove(PFlag::FLAG_C);
@@ -429,6 +429,125 @@ impl NMOS6502 {
                 println!("CLV");
 
                 self.p_flags.remove(PFlag::FLAG_V);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::EOR, Value::Immediate(val)) => {
+                println!("EOR ${:02X}", val);
+                let a = self.a ^ val;
+                self.a = a;
+
+                if a == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if a & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::ADC, Value::Immediate(val)) => {
+                println!("ADC ${:02X}", val);
+                let ainit = self.a;
+
+                let mut a: u16 = self.a as u16;
+                a += val as u16;
+                a += (self.p_flags.bits & 0b1) as u16;
+                self.a = (a & 0xFF) as u8;
+
+                if self.a == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if (self.a as i8) < 0 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                if a & 0x100 == 0x100 {
+                    self.p_flags.insert(PFlag::FLAG_C);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_C);
+                }
+
+                if (ainit ^ self.a) & (val ^ self.a) & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_V);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_V);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::CPY, Value::Immediate(val)) => {
+                println!("CPY #${:02X}", val);
+
+                if self.y.wrapping_sub(val) == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if (self.y.wrapping_sub(val)) & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                if self.y >= val {
+                    self.p_flags.insert(PFlag::FLAG_C);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_C);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::LDY, Value::Immediate(val)) => {
+                println!("LDY #${:02X}", val);
+
+                self.y = val;
+
+                if val == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if val & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::CPX, Value::Immediate(val)) => {
+                println!("CPX #${:02X}", val);
+
+                if self.x.wrapping_sub(val) == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if (self.x.wrapping_sub(val)) & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                if self.x >= val {
+                    self.p_flags.insert(PFlag::FLAG_C);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_C);
+                }
 
                 Ok(0u8)
             }
