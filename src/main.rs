@@ -83,15 +83,17 @@ fn main() {
 
     println!("{:?}", &nes.cpu);
 
-    //let sprite_bytes = [0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x7Eu8, 0x3Cu8,
-                        //0x3Cu8, 0x7Eu8, 0x7Eu8, 0xFFu8, 0xFFu8, 0xFFu8, 0x42u8, 0x00u8];
+    let sprite_bytes = [0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x7Eu8, 0x3Cu8,
+                        0x3Cu8, 0x7Eu8, 0x7Eu8, 0xFFu8, 0xFFu8, 0xFFu8, 0x42u8, 0x00u8];
 
     /*let mut sprite_bytes: [u8; 256*16] = [0u8; 256*16];
     sprite_bytes.copy_from_slice(&cart.chr_rom[0..256*16]);
+    let mut sprite_bytes2: [u8; 256*16] = [0u8; 256*16];
+    sprite_bytes2.copy_from_slice(&cart.chr_rom[256*16..256*16*2]);*/
 
     let mut buffer = vec![0u32; WIDTH * HEIGHT];
 
-    let mut window = Window::new("NES Emulator",
+    /*let mut window = Window::new("NES Emulator",
                                  WIDTH,
                                  HEIGHT,
                                  WindowOptions {
@@ -113,7 +115,21 @@ fn main() {
                 let b1 = ((((sprite_bytes[ind + (y % 8) + 0] as u8) >> (7 - (x % 8))) & 0b1) << 0) as u8;
                 let b2 = ((((sprite_bytes[ind + (y % 8) + 8] as u8) >> (7 - (x % 8))) & 0b1) << 1) as u8;
                 let col = b1 | b2;
-                buffer[x + y * WIDTH] = palette[col as usize];
+                buffer[x + y * WIDTH] = palette[col as usize + 32];
+            }
+        }
+
+        for y in 0..128 {
+            for x in 0..16*8 {
+                let tx = x / 8;
+                let ty = y / 8;
+                let xind = tx * 16;
+                let yind = ty * 16;
+                let ind = xind + yind * 16;
+                let b1 = ((((sprite_bytes2[ind + (y % 8) + 0] as u8) >> (7 - (x % 8))) & 0b1) << 0) as u8;
+                let b2 = ((((sprite_bytes2[ind + (y % 8) + 8] as u8) >> (7 - (x % 8))) & 0b1) << 1) as u8;
+                let col = b1 | b2;
+                buffer[(x + 16*9) + y * WIDTH] = palette[col as usize + 32];
             }
         }
 

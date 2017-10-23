@@ -70,36 +70,16 @@ impl NMOS6502 {
 
                 self.a = val;
 
-                if val == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if val & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                self.set_nz(val);
 
                 Ok(0u8)
             }
             Instruction(Opcode::LDA, Value::Absolute(addr)) => {
-                println!("LDA @{:04X}", addr);
                 let val = self.read8(addr);
+                println!("LDA @{:04X} = {:02X}", addr, val);
                 self.a = val;
 
-                if val == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if val & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                self.set_nz(val);
 
                 Ok(0u8)
             }
@@ -143,17 +123,7 @@ impl NMOS6502 {
 
                 self.x = val;
 
-                if val == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if val & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                self.set_nz(val);
 
                 Ok(0u8)
             }
@@ -168,7 +138,7 @@ impl NMOS6502 {
                 println!("JSR ${:04X}", addr);
 
                 let pc = self.pc;
-                self.push16(pc);
+                self.push16(pc - 1);
                 self.pc = addr;
 
                 Ok(0u8)
@@ -254,9 +224,9 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::BIT, Value::ZeroPage(zpg)) => {
-                println!("BIT ${:02X}", zpg);
-
                 let val = self.mem.borrow().read8(zpg as u16);
+                println!("BIT ${:02X} = {:02X}", zpg, val);
+
 
                 if val & 0x80 == 0x80 {
                     self.p_flags.insert(PFlag::FLAG_N);
@@ -308,8 +278,7 @@ impl NMOS6502 {
             Instruction(Opcode::RTS, Value::Implied) => {
                 println!("RTS");
 
-                let ret = self.pop16();
-                self.pc = ret;
+                self.pc = self.pop16() + 1;
 
                 Ok(0u8)
             }
@@ -333,17 +302,8 @@ impl NMOS6502 {
                 let val = self.pop8();
                 self.a = val;
 
-                if val == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if val & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                let a = self.a;
+                self.set_nz(a);
 
                 Ok(0u8)
             }
@@ -352,34 +312,16 @@ impl NMOS6502 {
                 let a = self.a & val;
                 self.a = a;
 
-                if a == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if a & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                let a = self.a;
+                self.set_nz(a);
 
                 Ok(0u8)
             }
             Instruction(Opcode::CMP, Value::Immediate(val)) => {
                 println!("CMP #${:02X}", val);
 
-                if self.a.wrapping_sub(val) == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if (self.a.wrapping_sub(val)) & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                let temp = self.a.wrapping_sub(val);
+                self.set_nz(temp);
 
                 if self.a >= val {
                     self.p_flags.insert(PFlag::FLAG_C);
@@ -408,20 +350,11 @@ impl NMOS6502 {
             }
             Instruction(Opcode::ORA, Value::Immediate(val)) => {
                 println!("ORA ${:02X}", val);
-                let a = self.a | val;
-                self.a = a;
+                
+                self.a = self.a | val;
 
-                if a == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if a & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                let a = self.a;
+                self.set_nz(a);
 
                 Ok(0u8)
             }
@@ -434,20 +367,11 @@ impl NMOS6502 {
             }
             Instruction(Opcode::EOR, Value::Immediate(val)) => {
                 println!("EOR ${:02X}", val);
-                let a = self.a ^ val;
-                self.a = a;
 
-                if a == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
+                self.a = self.a ^ val;
 
-                if a & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                let a = self.a;
+                self.set_nz(a);
 
                 Ok(0u8)
             }
@@ -489,17 +413,8 @@ impl NMOS6502 {
             Instruction(Opcode::CPY, Value::Immediate(val)) => {
                 println!("CPY #${:02X}", val);
 
-                if self.y.wrapping_sub(val) == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if (self.y.wrapping_sub(val)) & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                let temp = self.y.wrapping_sub(val);
+                self.set_nz(temp);
 
                 if self.y >= val {
                     self.p_flags.insert(PFlag::FLAG_C);
@@ -513,35 +428,15 @@ impl NMOS6502 {
                 println!("LDY #${:02X}", val);
 
                 self.y = val;
-
-                if val == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if val & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                self.set_nz(val);
 
                 Ok(0u8)
             }
             Instruction(Opcode::CPX, Value::Immediate(val)) => {
                 println!("CPX #${:02X}", val);
 
-                if self.x.wrapping_sub(val) == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if (self.x.wrapping_sub(val)) & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                let temp = self.x.wrapping_sub(val);
+                self.set_nz(temp);
 
                 if self.x >= val {
                     self.p_flags.insert(PFlag::FLAG_C);
@@ -593,17 +488,8 @@ impl NMOS6502 {
                 let y = self.y;
                 self.y = y.wrapping_add(1);
 
-                if self.y == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if self.y & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                let y = self.y;
+                self.set_nz(y);
 
                 Ok(0u8)
             }
@@ -613,17 +499,8 @@ impl NMOS6502 {
                 let x = self.x;
                 self.x = x.wrapping_add(1);
 
-                if self.x == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if self.x & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                let x = self.x;
+                self.set_nz(x);
 
                 Ok(0u8)
             }
@@ -633,17 +510,8 @@ impl NMOS6502 {
                 let y = self.y;
                 self.y = y.wrapping_sub(1);
 
-                if self.y == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
-
-                if self.y & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                let y = self.y;
+                self.set_nz(y);
 
                 Ok(0u8)
             }
@@ -653,17 +521,86 @@ impl NMOS6502 {
                 let x = self.x;
                 self.x = x.wrapping_sub(1);
 
-                if self.x == 0 {
-                    self.p_flags.insert(PFlag::FLAG_Z);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_Z);
-                }
+                let x = self.x;
+                self.set_nz(x);
 
-                if self.x & 0x80 == 0x80 {
-                    self.p_flags.insert(PFlag::FLAG_N);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_N);
-                }
+                Ok(0u8)
+            }
+            Instruction(Opcode::TAY, Value::Implied) => {
+                println!("TAY");
+
+                let a = self.a;
+                self.y = a;
+
+                self.set_nz(a);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::TAX, Value::Implied) => {
+                println!("TAX");
+
+                let a = self.a;
+                self.x = a;
+
+                self.set_nz(a);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::TXA, Value::Implied) => {
+                println!("TXA");
+
+                let x = self.x;
+                self.a = x;
+
+                self.set_nz(x);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::TYA, Value::Implied) => {
+                println!("TYA");
+
+                let y = self.y;
+                self.a = y;
+
+                self.set_nz(y);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::TSX, Value::Implied) => {
+                println!("TSX");
+
+                let sp = self.sp;
+                self.x = sp;
+
+                self.set_nz(sp);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::STX, Value::Absolute(addr)) => {
+                println!("STX @{:04X}", addr);
+
+                let x = self.x;
+                self.write8(addr, x);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::LDX, Value::Absolute(addr)) => {
+                let val = self.read8(addr);
+                println!("LDX @{:04X} = {:02X}", addr, val);
+                self.x = val;
+
+                self.set_nz(val);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::RTI, Value::Implied) => {
+                println!("RTI");
+
+                let p = self.pop8();
+                let ret = self.pop16();
+
+                self.p_flags.bits = p;
+                self.pc = ret;
 
                 Ok(0u8)
             }
@@ -671,10 +608,24 @@ impl NMOS6502 {
         }
     }
 
+    pub fn set_nz(&mut self, val: u8) {                
+        if val == 0 {
+            self.p_flags.insert(PFlag::FLAG_Z);
+        } else {
+            self.p_flags.remove(PFlag::FLAG_Z);
+        }
+
+        if val & 0x80 == 0x80 {
+            self.p_flags.insert(PFlag::FLAG_N);
+        } else {
+            self.p_flags.remove(PFlag::FLAG_N);
+        }
+    }
+
     pub fn read8(&mut self, addr: u16) -> u8 {
         match addr {
             0x2002 => self.ppu.borrow().ppustatus,
-            _ => panic!(),
+            _ => self.mem.borrow_mut().read8(addr),
         }
     }
 
@@ -697,28 +648,28 @@ impl NMOS6502 {
                 self.ppu.borrow_mut().ppuctl = PPUCTL::from(val);
             }
             0x2001 => println!("PPUMASK {:X}", val),
-            _ => unimplemented!(),
+            _ => self.mem.borrow_mut().write8(addr, val),
         }
     }
 
     fn push8(&mut self, val: u8) {
-        self.sp -= 1;
         self.mem.borrow_mut().write8(0x100 | self.sp as u16, val);
+        self.sp -= 1;
     }
 
     fn push16(&mut self, val: u16) {
-        self.push8((val >> 0) as u8);
         self.push8((val >> 8) as u8);
+        self.push8((val >> 0) as u8);
     }
 
     fn pop8(&mut self) -> u8 {
-        let ret = self.mem.borrow().read8(0x100 | self.sp as u16);
         self.sp += 1;
+        let ret = self.mem.borrow().read8(0x100 | self.sp as u16);
         ret
     }
 
     fn pop16(&mut self) -> u16 {
-        ((self.pop8() as u16) << 8) | self.pop8() as u16
+        self.pop8() as u16 | ((self.pop8() as u16) << 8)
     }
 
     pub fn set_pc(&mut self, val: u16) {
