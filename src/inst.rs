@@ -3,6 +3,7 @@ use cpu::NMOS6502;
 #[derive(Debug, PartialEq)]
 pub enum Value {
     Implied,
+    PreIdxInd(u8),
     Immediate(u8),
     Absolute(u16),
     Relative(i8),
@@ -29,26 +30,34 @@ macro_rules! zpg {
     ($instr:ident, $cpu:ident) => {{ (2, (Instruction(Opcode::$instr, Value::ZeroPage($cpu.read8_pc())))) }}
 }
 
+macro_rules! izx {
+    ($instr:ident, $cpu:ident) => {{ (2, (Instruction(Opcode::$instr, Value::PreIdxInd($cpu.read8_pc())))) }}
+}
+
 #[derive(Debug)]
 pub enum Opcode {
     PHP,    // 08
     ORA,    // 09
+    ASL,    // 0A
     BPL,    // 10
     CLC,    // 18
     JSR,    // 20
     BIT,    // 24
     PLP,    // 28
     AND,    // 29
+    ROL,    // 2A
     BMI,    // 30
     SEC,    // 38
     RTI,    // 40
     PHA,    // 48
     EOR,    // 49
+    LSR,    // 4A
     JMP,    // 4C
     BVC,    // 50
     RTS,    // 60
     PLA,    // 68
     ADC,    // 69
+    ROR,    // 6A
     BVS,    // 70
     SEI,    // 78
     STX,    // 86 8E
@@ -60,7 +69,7 @@ pub enum Opcode {
     TXS,    // 9A
     LDY,    // A0
     LDX,    // A2 AE
-    LDA,    // A9 AD
+    LDA,    // A5 A9 AD
     TAY,    // A8
     TAX,    // AA
     BCS,    // B0
@@ -89,6 +98,7 @@ impl Instruction {
         match {cpu.read8_pc()} {
             0x08 => imp!(PHP, cpu),
             0x09 => imm!(ORA, cpu),
+            0x0A => imp!(ASL, cpu),
             0x10 => rel!(BPL, cpu),
             0x18 => imp!(CLC, cpu),
             0x30 => rel!(BMI, cpu),
@@ -97,14 +107,17 @@ impl Instruction {
             0x24 => zpg!(BIT, cpu),
             0x28 => imp!(PLP, cpu),
             0x29 => imm!(AND, cpu),
+            0x2A => imp!(ROL, cpu),
             0x40 => imp!(RTI, cpu),
             0x48 => imp!(PHA, cpu),
             0x49 => imm!(EOR, cpu),
+            0x4a => imp!(LSR, cpu),
             0x4C => abs!(JMP, cpu),
             0x50 => rel!(BVC, cpu),
             0x60 => imp!(RTS, cpu),
             0x68 => imp!(PLA, cpu),
             0x69 => imm!(ADC, cpu),
+            0x6A => imp!(ROR, cpu),
             0x70 => rel!(BVS, cpu),
             0x78 => imp!(SEI, cpu),
             0x85 => zpg!(STA, cpu),
@@ -118,6 +131,7 @@ impl Instruction {
             0x9A => imp!(TXS, cpu),
             0xA0 => imm!(LDY, cpu),
             0xA2 => imm!(LDX, cpu),
+            0xA5 => zpg!(LDA, cpu),
             0xA8 => imp!(TAY, cpu),
             0xA9 => imm!(LDA, cpu),
             0xAA => imp!(TAX, cpu),

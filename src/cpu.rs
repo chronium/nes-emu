@@ -84,7 +84,7 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::STA, Value::Absolute(addr)) => {
-                println!("STA @{:04X}", addr);
+                println!("STA @{:04X} = {:02X}", addr, self.read8(addr));
 
                 let a = self.a;
                 self.write8(addr, a);
@@ -151,7 +151,7 @@ impl NMOS6502 {
             Instruction(Opcode::SEC, Value::Implied) => {
                 println!("SEC");
 
-                self.p_flags.insert(PFlag::FLAG_C);
+                self.set_carry(true);
 
                 Ok(0u8)
             }
@@ -168,7 +168,7 @@ impl NMOS6502 {
             Instruction(Opcode::CLC, Value::Implied) => {
                 println!("CLC");
 
-                self.p_flags.remove(PFlag::FLAG_C);
+                self.set_carry(false);
 
                 Ok(0u8)
             }
@@ -217,7 +217,7 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::STA, Value::ZeroPage(zpg)) => {
-                println!("STA ${:02X}", zpg);
+                println!("STA ${:02X} = {:02X}", zpg, self.read8(zpg as u16));
 
                 self.mem.borrow_mut().write8(zpg as u16, self.a);
 
@@ -320,14 +320,10 @@ impl NMOS6502 {
             Instruction(Opcode::CMP, Value::Immediate(val)) => {
                 println!("CMP #${:02X}", val);
 
+                let t = self.a;
                 let temp = self.a.wrapping_sub(val);
                 self.set_nz(temp);
-
-                if self.a >= val {
-                    self.p_flags.insert(PFlag::FLAG_C);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_C);
-                }
+                self.set_carry(t >= val);
 
                 Ok(0u8)
             }
@@ -396,11 +392,7 @@ impl NMOS6502 {
                     self.p_flags.remove(PFlag::FLAG_N);
                 }
 
-                if a & 0x100 == 0x100 {
-                    self.p_flags.insert(PFlag::FLAG_C);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_C);
-                }
+                self.set_carry(a & 0x100 == 0x100);
 
                 if (ainit ^ self.a) & (val ^ self.a) & 0x80 == 0x80 {
                     self.p_flags.insert(PFlag::FLAG_V);
@@ -413,14 +405,10 @@ impl NMOS6502 {
             Instruction(Opcode::CPY, Value::Immediate(val)) => {
                 println!("CPY #${:02X}", val);
 
+                let t = self.y;
                 let temp = self.y.wrapping_sub(val);
                 self.set_nz(temp);
-
-                if self.y >= val {
-                    self.p_flags.insert(PFlag::FLAG_C);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_C);
-                }
+                self.set_carry(t >= val);
 
                 Ok(0u8)
             }
@@ -435,14 +423,10 @@ impl NMOS6502 {
             Instruction(Opcode::CPX, Value::Immediate(val)) => {
                 println!("CPX #${:02X}", val);
 
+                let t = self.x;
                 let temp = self.x.wrapping_sub(val);
                 self.set_nz(temp);
-
-                if self.x >= val {
-                    self.p_flags.insert(PFlag::FLAG_C);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_C);
-                }
+                self.set_carry(t >= val);
 
                 Ok(0u8)
             }
@@ -468,11 +452,7 @@ impl NMOS6502 {
                     self.p_flags.remove(PFlag::FLAG_N);
                 }
 
-                if a & 0x100 == 0x100 {
-                    self.p_flags.insert(PFlag::FLAG_C);
-                } else {
-                    self.p_flags.remove(PFlag::FLAG_C);
-                }
+                self.set_carry(a & 0x100 == 0x100);
 
                 if (ainit ^ self.a) & (val ^ self.a) & 0x80 == 0x80 {
                     self.p_flags.insert(PFlag::FLAG_V);
@@ -604,21 +584,87 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
+            Instruction(Opcode::LSR, Value::Implied) => {
+                println!("LSR A");
+
+                let mut a = self.a;
+                self.set_carry(a & 0b1 == 0b1);
+                a >>= 1;
+                self.set_nz(a);
+                self.a = a;
+                
+                Ok(0u8)
+            }
+            Instruction(Opcode::ASL, Value::Implied) => {
+                println!("ASL A");
+
+                let mut a = self.a;
+                self.set_carry(a & 0x80 == 0x80);
+                a <<= 1;
+                self.set_nz(a);
+                self.a = a;
+                
+                Ok(0u8)
+            }
+            Instruction(Opcode::ROR, Value::Implied) => {
+                println!("ROR A");
+
+                let mut a = self.a;
+                let carry = a & 0b1 == 0b1;
+                a >>= 1;
+                if self.p_flags.contains(PFlag::FLAG_C) {
+                    a |= 0x80;
+                }
+                self.set_nz(a);
+                self.set_carry(carry);
+                self.a = a;
+                
+                Ok(0u8)
+            }
+            Instruction(Opcode::ROL, Value::Implied) => {
+                println!("ROL A");
+
+                let mut a = self.a;
+                let carry = a & 0x80 == 0x80;
+                a <<= 1;
+                if self.p_flags.contains(PFlag::FLAG_C) {
+                    a |= 0b01;
+                }
+                self.set_nz(a);
+                self.set_carry(carry);
+                self.a = a;
+                
+                Ok(0u8)
+            }
+            Instruction(Opcode::LDA, Value::ZeroPage(offs)) => {
+                let val = self.read8(offs as u16);
+                println!("LDA @{:02X} = {:02X}", offs, val);
+                self.a = val;
+
+                self.set_nz(val);
+
+                Ok(0u8)
+            }
             instr => Err(format!("{:?}", instr)),
         }
     }
 
-    pub fn set_nz(&mut self, val: u8) {                
-        if val == 0 {
-            self.p_flags.insert(PFlag::FLAG_Z);
-        } else {
-            self.p_flags.remove(PFlag::FLAG_Z);
+    pub fn set_carry(&mut self, val: bool) {
+        match val {
+            true => self.p_flags.insert(PFlag::FLAG_C),
+            false => self.p_flags.remove(PFlag::FLAG_C),
+        }
+    }
+
+    pub fn set_nz(&mut self, val: u8) { 
+        match val {
+            0 => self.p_flags.insert(PFlag::FLAG_Z),
+            _ => self.p_flags.remove(PFlag::FLAG_Z),
         }
 
-        if val & 0x80 == 0x80 {
-            self.p_flags.insert(PFlag::FLAG_N);
-        } else {
-            self.p_flags.remove(PFlag::FLAG_N);
+        match val & 0x80 {
+            0x80 => self.p_flags.insert(PFlag::FLAG_N),
+            _ => self.p_flags.remove(PFlag::FLAG_N),
         }
     }
 
