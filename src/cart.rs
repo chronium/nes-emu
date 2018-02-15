@@ -98,13 +98,27 @@ impl fmt::Debug for NESCart {
 impl From<Vec<u8>> for NESCart {
     fn from(cart: Vec<u8>) -> Self {
         let header = NESHeader::from(&cart);
-        let mut prg_rom = vec![0u8; header.prg_rom_sz];
+
+        let prg_size = match header.prg_rom_sz < 0x8000 {
+            true => 0x8000,
+            false => header.prg_rom_sz,
+        };
+
+        let mut prg_rom = vec![0u8; prg_size];
         let mut chr_rom = vec![0u8; header.chr_rom_sz];
 
         assert!(header.prg_rom_sz == cart[16..header.prg_rom_sz + 16].len());
         assert!(header.chr_rom_sz == cart[16 + header.prg_rom_sz..16 + header.prg_rom_sz + header.chr_rom_sz].len());
 
-        prg_rom.copy_from_slice(&cart[16..header.prg_rom_sz + 16]);
+        if header.prg_rom_sz < 0x8000 {
+            let mut tmp = Vec::<u8>::new();
+            tmp.extend_from_slice(&cart[16..header.prg_rom_sz + 16]);
+            tmp.extend_from_slice(&cart[16..header.prg_rom_sz + 16]);
+
+            prg_rom.copy_from_slice(&tmp.as_slice());
+        } else {
+            prg_rom.copy_from_slice(&cart[16..header.prg_rom_sz + 16]);
+        }
         chr_rom.copy_from_slice(&cart[16 + header.prg_rom_sz..16 + header.prg_rom_sz + header.chr_rom_sz]);
 
         NESCart {

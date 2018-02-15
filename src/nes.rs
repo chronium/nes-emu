@@ -17,7 +17,7 @@ pub struct NES {
 impl NES {
     pub fn new(cart: Rc<RefCell<NESCart>>) -> Self {
         let mem = Rc::new(RefCell::new(Memory::new(cart.clone())));
-        let ppu = Rc::new(RefCell::new(PPU::new(cart.clone(), 0u8)));
+        let ppu = Rc::new(RefCell::new(PPU::new(cart.clone(), mem.clone(), 0u8)));
         let cpu = NMOS6502::new(mem.clone(), ppu.clone());
 
         NES {

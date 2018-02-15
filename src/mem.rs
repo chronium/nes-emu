@@ -34,23 +34,19 @@ impl Memory {
                 match mapper {
                     0 => match addr {
                         0x8000...0xBFFF => self.cart.borrow().prg_rom[addr as usize - 0x8000],
-                        0xC000...0xFFFF => self.cart.borrow().prg_rom[addr as usize - 0xC000],
-                        _ => panic!("addr: 0x{:X}", addr)
-                    },
-                    1 => match addr{
-                        0x8000...0xBFFF => self.cart.borrow().prg_rom[addr as usize - 0x8000],
                         0xC000...0xFFFF => self.cart.borrow().prg_rom[addr as usize - 0x8000],
-                        _ => panic!("addr: 0x{:X}", addr)
+                        _ => panic!("Cannot read addr: 0x{:X}", addr)
                     }
                     _ => panic!("Unimplemented mapper: {}", mapper)
                 }
-            _ => panic!("addr: 0x{:X}", addr)
+            _ => panic!("Cannot read addr: 0x{:X}", addr)
         }
    }
 
     pub fn write8(&mut self, addr: u16, val: u8) {
         match addr {
             0x0000...0x2000 => self.ram[addr as usize % 0x800] = val,
+            0x4017 => {}
             _ => panic!("Cannot write addr: 0x{:X}", addr)
         }
     }

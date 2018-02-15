@@ -57,7 +57,7 @@ impl NMOS6502 {
     }
 
     pub fn reset(&mut self) {
-        self.pc = (self.mem.borrow().read8(0xFFFD) as u16) << 8 | (self.mem.borrow().read8(0xFFFC) as u16);
+        self.pc = (self.read8(0xFFFD) as u16) << 8 | (self.read8(0xFFFC) as u16);
     }
 
     pub fn step(&mut self) -> Result<u8, String> {
@@ -84,9 +84,9 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::STA, Value::Absolute(addr)) => {
-                println!("STA @{:04X} = {:02X}", addr, self.read8(addr));
-
                 let a = self.a;
+                println!("STA @{:04X} = {:02X}", addr, a);
+
                 self.write8(addr, a);
 
                 Ok(0u8)
@@ -130,7 +130,8 @@ impl NMOS6502 {
             Instruction(Opcode::STX, Value::ZeroPage(zpg)) => {
                 println!("STX ${:02X}", zpg);
 
-                self.mem.borrow_mut().write8(zpg as u16, self.x);
+                let x = self.x;
+                self.write8(zpg as u16, x);
 
                 Ok(0u8)
             }
@@ -219,14 +220,14 @@ impl NMOS6502 {
             Instruction(Opcode::STA, Value::ZeroPage(zpg)) => {
                 println!("STA ${:02X} = {:02X}", zpg, self.read8(zpg as u16));
 
-                self.mem.borrow_mut().write8(zpg as u16, self.a);
+                let a = self.a;
+                self.write8(zpg as u16, a);
 
                 Ok(0u8)
             }
             Instruction(Opcode::BIT, Value::ZeroPage(zpg)) => {
-                let val = self.mem.borrow().read8(zpg as u16);
+                let val = self.read8(zpg as u16);
                 println!("BIT ${:02X} = {:02X}", zpg, val);
-
 
                 if val & 0x80 == 0x80 {
                     self.p_flags.insert(PFlag::FLAG_N);
@@ -557,9 +558,9 @@ impl NMOS6502 {
                 Ok(0u8)
             }
             Instruction(Opcode::STX, Value::Absolute(addr)) => {
-                println!("STX @{:04X}", addr);
-
                 let x = self.x;
+                println!("STX @{:04X} = {:02X}", addr, x);
+
                 self.write8(addr, x);
 
                 Ok(0u8)
@@ -645,8 +646,238 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
+            Instruction(Opcode::LDA, Value::PreIdxInd(offs)) => {
+                let zaddr = self.x.wrapping_add(offs);
+                let addr = self.get_ind_addr(zaddr as u16);
+                let val = self.read8(addr);
+                println!("LDA (${:02X},X) @ {:02X} = {:04X} = {:02X}", offs, zaddr.wrapping_sub(1), addr, val);
+
+                self.set_nz(val);
+                self.a = val;
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::BIT, Value::Absolute(addr)) => {
+                let val = self.read8(addr);
+                println!("BIT ${:04X} = {:02X}", addr, val);
+
+                if val & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                if val & 0x40 == 0x40 {
+                    self.p_flags.insert(PFlag::FLAG_V);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_V);
+                }
+
+                if val & self.a == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::STA, Value::ZeroPageX(zpg)) => {
+                let x = self.x;
+                println!("STA ${:02X},X @ {:02X} = {:02X}", zpg, zpg.wrapping_sub(x), self.read8((zpg + x) as u16));
+
+                let a = self.a;
+                self.write8((zpg + x) as u16, a);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::STA, Value::PreIdxInd(offs)) => {
+                let zaddr = self.x.wrapping_add(offs);
+                let addr = self.get_ind_addr(zaddr as u16);
+                let val = self.read8(addr);
+                println!("STA (${:02X},X) @ {:02X} = {:04X} = {:02X}", offs, zaddr.wrapping_sub(1), addr, val);
+
+                let a = self.a;
+                self.write8(addr, a);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::ORA, Value::PreIdxInd(offs)) => {
+                let zaddr = self.x.wrapping_add(offs);
+                let addr = self.get_ind_addr(zaddr as u16);
+                let val = self.read8(addr);
+                println!("ORA (${:02X},X) @ {:02X} = {:04X} = {:02X}", offs, zaddr.wrapping_sub(1), addr, val);
+
+                let mut a = self.a;
+                a |= val;
+
+                self.set_nz(a);
+
+                self.a = a;
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::AND, Value::PreIdxInd(offs)) => {
+                let zaddr = self.x.wrapping_add(offs);
+                let addr = self.get_ind_addr(zaddr as u16);
+                let val = self.read8(addr);
+                println!("AND (${:02X},X) @ {:02X} = {:04X} = {:02X}", offs, zaddr.wrapping_sub(1), addr, val);
+
+                let mut a = self.a;
+                a &= val;
+
+                self.set_nz(a);
+
+                self.a = a;
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::EOR, Value::PreIdxInd(offs)) => {
+                let zaddr = self.x.wrapping_add(offs);
+                let addr = self.get_ind_addr(zaddr as u16);
+                let val = self.read8(addr);
+                println!("EOR (${:02X},X) @ {:02X} = {:04X} = {:02X}", offs, zaddr.wrapping_sub(1), addr, val);
+
+                let mut a = self.a;
+                a ^= val;
+
+                self.set_nz(a);
+
+                self.a = a;
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::STA, Value::AbsoluteX(addr)) => {
+                let a = self.a;
+                let x = self.x;
+                println!("STA @{:04X},X @ {:04X} = {:02X}", addr, addr + x as u16, self.read8(addr + x as u16));
+
+                self.write8(addr + x as u16, a);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::ADC, Value::ZeroPage(zpg)) => {
+                let val = self.read8(zpg as u16);
+                println!("ADC ${:02X}", val);
+                let ainit = self.a;
+
+                let mut a: u16 = self.a as u16;
+                a += val as u16;
+                a += (self.p_flags.bits & 0b1) as u16;
+                self.a = (a & 0xFF) as u8;
+
+                if self.a == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if (self.a as i8) < 0 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                self.set_carry(a & 0x100 == 0x100);
+
+                if (ainit ^ self.a) & (val ^ self.a) & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_V);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_V);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::ADC, Value::PreIdxInd(offs)) => {
+                let zaddr = self.x.wrapping_add(offs);
+                let addr = self.get_ind_addr(zaddr as u16);
+                let val = self.read8(addr);
+                println!("ADC (${:02X},X) @ {:02X} = {:04X} = {:02X}", offs, zaddr, addr, val);
+                let ainit = self.a;
+
+                let mut a: u16 = self.a as u16;
+                a += val as u16;
+                a += (self.p_flags.bits & 0b1) as u16;
+                self.a = (a & 0xFF) as u8;
+
+                if self.a == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if (self.a as i8) < 0 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                self.set_carry(a & 0x100 == 0x100);
+
+                if (ainit ^ self.a) & (val ^ self.a) & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_V);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_V);
+                }
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::CMP, Value::PreIdxInd(offs)) => {
+                let zaddr = self.x.wrapping_add(offs);
+                let addr = self.get_ind_addr(zaddr as u16);
+                let val = self.read8(addr);
+                println!("CMP (${:02X},X) @ {:02X} = {:04X} = {:02X}", offs, zaddr, addr, val);
+
+                let t = self.a;
+                let temp = self.a.wrapping_sub(val);
+                self.set_nz(temp);
+                self.set_carry(t >= val);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::SBC, Value::PreIdxInd(offs)) => {
+                let zaddr = self.x.wrapping_add(offs);
+                let addr = self.get_ind_addr(zaddr as u16);
+                let val = self.read8(addr);
+                println!("SBC (${:02X},X) @ {:02X} = {:04X} = {:02X}", offs, zaddr, addr, val);
+                let ainit = self.a;
+                let val = val ^ 0xFF;
+
+                let mut a: u16 = self.a as u16;
+                a += val as u16;
+                a += (self.p_flags.bits & 0b1) as u16;
+                self.a = (a & 0xFF) as u8;
+
+                if self.a == 0 {
+                    self.p_flags.insert(PFlag::FLAG_Z);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_Z);
+                }
+
+                if (self.a as i8) < 0 {
+                    self.p_flags.insert(PFlag::FLAG_N);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_N);
+                }
+
+                self.set_carry(a & 0x100 == 0x100);
+
+                if (ainit ^ self.a) & (val ^ self.a) & 0x80 == 0x80 {
+                    self.p_flags.insert(PFlag::FLAG_V);
+                } else {
+                    self.p_flags.remove(PFlag::FLAG_V);
+                }
+
+                Ok(0u8)
+            }
             instr => Err(format!("{:?}", instr)),
         }
+    }
+
+    pub fn get_ind_addr(&mut self, zaddr: u16) -> u16 {
+        let addrl = self.read8(zaddr as u16);
+        let zaddr = zaddr.wrapping_add(1);
+        let addrh = self.read8(zaddr as u16);
+        ((addrh as u16) << 8) | addrl as u16
     }
 
     pub fn set_carry(&mut self, val: bool) {
@@ -689,11 +920,10 @@ impl NMOS6502 {
 
     fn write8(&mut self, addr: u16, val: u8) {
         match addr {
-            0x2000 => { 
-                println!("PPUCTRL {:X}", val);
-                self.ppu.borrow_mut().ppuctl = PPUCTL::from(val);
-            }
-            0x2001 => println!("PPUMASK {:X}", val),
+            0x2000...0x2007 => self.ppu.borrow_mut().write8(addr, val),
+            0x4010 => println!("APU: DMC @{:04X} = {:02X}", addr, val),
+            0x4014 => self.ppu.borrow_mut().oamdma(val),
+            0x4015 => println!("APU: Status @{:04X} = {:02X}", addr, val),
             _ => self.mem.borrow_mut().write8(addr, val),
         }
     }

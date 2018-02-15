@@ -1,7 +1,7 @@
 #[derive(Debug, Clone)]
 pub struct PPUCTL {
     nametable: BaseNameTable,
-    vraminc: VRAMINC,
+    pub vraminc: VRAMINC,
     spriteaddr: SpriteAddr,
     backaddr: BGPatternTableAddr,
     spritesize: SpriteSize,
