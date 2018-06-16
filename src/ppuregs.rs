@@ -6,7 +6,7 @@ pub struct PPUCTL {
     backaddr: BGPatternTableAddr,
     spritesize: SpriteSize,
     masterslave: MasterSlave,
-    nmi: bool
+    pub nmi: bool
 }
 
 impl From<u8> for PPUCTL {

@@ -6,9 +6,11 @@ extern crate clap;
 #[macro_use]
 extern crate bitflags;
 
-extern crate minifb;
+#[macro_use]
+extern crate lazy_static;
 
-use minifb::{Key, WindowOptions, Window, Scale};
+extern crate clock_ticks;
+extern crate minifb;
 
 mod ppuregs;
 mod cart;
@@ -28,6 +30,11 @@ use std::fs::File;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use std::sync::{Arc, Mutex};
+
+use std::thread;
+use std::time::Duration;
+
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 
@@ -44,6 +51,34 @@ const palette: [u32; 64] = [
 
 const WIDTH: usize = 355;
 const HEIGHT: usize = 240;
+
+use minifb::{Key, WindowOptions, Window, Scale};
+
+pub fn cpu_loop(rate: u64, nes: Arc<Mutex<NES>>) {
+    let thr = thread::spawn(move || {
+        let mut accumulator = 0;
+        let mut previous_clock = clock_ticks::precise_time_ns();
+
+        let rate = 1_000_000_000 / rate;
+
+        loop {
+            match nes.lock().unwrap().step() {
+                Result::Err(f) => break,
+                Result::Ok(f) => (),
+            };
+
+            let now = clock_ticks::precise_time_ns();
+            accumulator += now - previous_clock;
+            previous_clock = now;
+
+            while accumulator >= rate {
+                accumulator -= rate;
+            }
+
+            thread::sleep(Duration::from_millis(((rate - accumulator) / 1000000) as u64));
+        }
+    });
+}
 
 fn main() {
     let matches = clap_app!(snes_emu =>
@@ -64,82 +99,63 @@ fn main() {
 
     let cart = NESCart::from(rom_raw);
 
-    let nes = &mut NES::new(Rc::new(RefCell::new(cart)));
-    nes.reset();
+    let nes = &mut Arc::new(Mutex::new(NES::new(Arc::new(RwLock::new(cart)))));
+    let ness = &mut nes.clone();
+    ness.lock().unwrap().reset();
 
     if matches.is_present("pc") {
-        nes.cpu.set_pc(u16::from_str_radix(matches.value_of("pc").unwrap(), 16).unwrap());
+        let ness = nes.lock().unwrap();
+        let mut cpu = ness.cpu.lock().unwrap();
+        cpu.set_pc(u16::from_str_radix(matches.value_of("pc").unwrap(), 16).unwrap());
     }
 
     if matches.is_present("sp") {
-        nes.cpu.set_sp(u8::from_str_radix(matches.value_of("sp").unwrap(), 16).unwrap());
+        let ness = nes.lock().unwrap();
+        let mut cpu = ness.cpu.lock().unwrap();
+        cpu.set_sp(u8::from_str_radix(matches.value_of("sp").unwrap(), 16).unwrap());
     }
 
-    nes.run();
-    while match nes.step() {
-        Ok(_) => true,
-        Err(err) => { println!("{}", err); false },
-    } {}
+    let nes_arc = nes.clone();
+    cpu_loop (1000, nes_arc);
 
-    println!("{:?}", &nes.cpu);
-
-    let sprite_bytes = [0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x7Eu8, 0x3Cu8,
-                        0x3Cu8, 0x7Eu8, 0x7Eu8, 0xFFu8, 0xFFu8, 0xFFu8, 0x42u8, 0x00u8];
-
-    /*let mut sprite_bytes: [u8; 256*16] = [0u8; 256*16];
-    sprite_bytes.copy_from_slice(&cart.chr_rom[0..256*16]);
-    let mut sprite_bytes2: [u8; 256*16] = [0u8; 256*16];
-    sprite_bytes2.copy_from_slice(&cart.chr_rom[256*16..256*16*2]);*/
-
-    let mut buffer = vec![0u32; WIDTH * HEIGHT];
-
-    /*let mut window = Window::new("NES Emulator",
-                                 WIDTH,
-                                 HEIGHT,
-                                 WindowOptions {
+    let mut window = Window::new("NES Emulator", WIDTH as usize,
+                                HEIGHT as usize,
+                                WindowOptions {
                                     scale: Scale::X4,
                                     ..Default::default()
                                 }).unwrap_or_else(|e| {
                                      panic!("{}", e);
-                                 });
+                                });
 
+    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+
+    let mut sprite_bytes: [u8; 256*16] = [0u8; 256*16];
+    let ness = nes.lock().unwrap();
+    let cart = ness.cart.lock().unwrap();
+        panic!("wtf");
+    sprite_bytes.copy_from_slice(&cart.chr_rom[0..256*16]);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        for y in 0..128 {
-            for x in 0..16*8 {
-                let tx = x / 8;
-                let ty = y / 8;
-                let xind = tx * 16;
-                let yind = ty * 16;
-                let ind = xind + yind * 16;
+        let nesl = nes.lock();
+        let nesu = nesl.unwrap();
+        let ppul = nesu.ppu.lock();
+        let ppuu = ppul.unwrap();
+        let vram = ppuu.vram;
+        panic!("wtf");
+        for y in 0..8usize {
+            for x in 0..8usize {
+                let ind: usize = vram[0x21ca] as usize * 16;
                 let b1 = ((((sprite_bytes[ind + (y % 8) + 0] as u8) >> (7 - (x % 8))) & 0b1) << 0) as u8;
                 let b2 = ((((sprite_bytes[ind + (y % 8) + 8] as u8) >> (7 - (x % 8))) & 0b1) << 1) as u8;
                 let col = b1 | b2;
-                buffer[x + y * WIDTH] = palette[col as usize + 32];
+                buffer[x as usize + y as usize * WIDTH] = palette[col as usize + 32];
             }
         }
 
-        for y in 0..128 {
-            for x in 0..16*8 {
-                let tx = x / 8;
-                let ty = y / 8;
-                let xind = tx * 16;
-                let yind = ty * 16;
-                let ind = xind + yind * 16;
-                let b1 = ((((sprite_bytes2[ind + (y % 8) + 0] as u8) >> (7 - (x % 8))) & 0b1) << 0) as u8;
-                let b2 = ((((sprite_bytes2[ind + (y % 8) + 8] as u8) >> (7 - (x % 8))) & 0b1) << 1) as u8;
-                let col = b1 | b2;
-                buffer[(x + 16*9) + y * WIDTH] = palette[col as usize + 32];
-            }
-        }
+        window.update_with_buffer(&buffer);
+    }
 
-        /*for y in 0..240 {
-            for x in 0..240 {
-                let col = ((((sprite_bytes[y % 8] & 0xFF) >> (x % 8)) as u8) & 0b1) | (((((sprite_bytes[(y % 8) + 8] & 0xFF) >> (x % 8)) as u8) & 0b1) << 1);
-                buffer[x + y * WIDTH] = palette[col as usize + x / 8];
-            }
-        }*/
+    nes.lock().unwrap().kill = true;
 
-        window.update_with_buffer(&buffer).unwrap();
-    }*/
+    println!("{:?}", &nes.lock().unwrap().cpu);
 }

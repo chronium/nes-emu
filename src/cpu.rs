@@ -5,6 +5,7 @@ use ppu::PPU;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use std::fmt;
 
@@ -24,8 +25,8 @@ bitflags! {
 
 #[derive(Debug, Clone)]
 pub struct NMOS6502 {
-    mem: Rc<RefCell<Memory>>,
-    ppu: Rc<RefCell<PPU>>,
+    mem: Arc<Mutex<Memory>>,
+    ppu: Arc<Mutex<PPU>>,
 
     a: u8,
 
@@ -40,7 +41,7 @@ pub struct NMOS6502 {
 }
 
 impl NMOS6502 {
-    pub fn new(mem: Rc<RefCell<Memory>>, ppu: Rc<RefCell<PPU>>) -> Self {
+    pub fn new(mem: Arc<Mutex<Memory>>, ppu: Arc<Mutex<PPU>>) -> Self {
         let mut p = PFlag::empty();
         p.insert(PFlag::FLAG_I);
         p.insert(PFlag::FLAG_X);
@@ -76,7 +77,7 @@ impl NMOS6502 {
             }
             Instruction(Opcode::LDA, Value::Absolute(addr)) => {
                 let val = self.read8(addr);
-                println!("LDA @{:04X} = {:02X}", addr, val);
+                println!("LDA ${:04X} = {:02X}", addr, val);
                 self.a = val;
 
                 self.set_nz(val);
@@ -639,14 +640,14 @@ impl NMOS6502 {
             }
             Instruction(Opcode::LDA, Value::ZeroPage(offs)) => {
                 let val = self.read8(offs as u16);
-                println!("LDA @{:02X} = {:02X}", offs, val);
+                println!("LDA ${:02X} = {:02X}", offs, val);
                 self.a = val;
 
                 self.set_nz(val);
 
                 Ok(0u8)
             }
-            Instruction(Opcode::LDA, Value::PreIdxInd(offs)) => {
+            Instruction(Opcode::LDA, Value::PreIdxIndX(offs)) => {
                 let zaddr = self.x.wrapping_add(offs);
                 let addr = self.get_ind_addr(zaddr as u16);
                 let val = self.read8(addr);
@@ -690,7 +691,7 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
-            Instruction(Opcode::STA, Value::PreIdxInd(offs)) => {
+            Instruction(Opcode::STA, Value::PreIdxIndX(offs)) => {
                 let zaddr = self.x.wrapping_add(offs);
                 let addr = self.get_ind_addr(zaddr as u16);
                 let val = self.read8(addr);
@@ -701,7 +702,7 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
-            Instruction(Opcode::ORA, Value::PreIdxInd(offs)) => {
+            Instruction(Opcode::ORA, Value::PreIdxIndX(offs)) => {
                 let zaddr = self.x.wrapping_add(offs);
                 let addr = self.get_ind_addr(zaddr as u16);
                 let val = self.read8(addr);
@@ -716,7 +717,7 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
-            Instruction(Opcode::AND, Value::PreIdxInd(offs)) => {
+            Instruction(Opcode::AND, Value::PreIdxIndX(offs)) => {
                 let zaddr = self.x.wrapping_add(offs);
                 let addr = self.get_ind_addr(zaddr as u16);
                 let val = self.read8(addr);
@@ -731,7 +732,7 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
-            Instruction(Opcode::EOR, Value::PreIdxInd(offs)) => {
+            Instruction(Opcode::EOR, Value::PreIdxIndX(offs)) => {
                 let zaddr = self.x.wrapping_add(offs);
                 let addr = self.get_ind_addr(zaddr as u16);
                 let val = self.read8(addr);
@@ -787,7 +788,7 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
-            Instruction(Opcode::ADC, Value::PreIdxInd(offs)) => {
+            Instruction(Opcode::ADC, Value::PreIdxIndX(offs)) => {
                 let zaddr = self.x.wrapping_add(offs);
                 let addr = self.get_ind_addr(zaddr as u16);
                 let val = self.read8(addr);
@@ -821,7 +822,7 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
-            Instruction(Opcode::CMP, Value::PreIdxInd(offs)) => {
+            Instruction(Opcode::CMP, Value::PreIdxIndX(offs)) => {
                 let zaddr = self.x.wrapping_add(offs);
                 let addr = self.get_ind_addr(zaddr as u16);
                 let val = self.read8(addr);
@@ -834,7 +835,7 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
-            Instruction(Opcode::SBC, Value::PreIdxInd(offs)) => {
+            Instruction(Opcode::SBC, Value::PreIdxIndX(offs)) => {
                 let zaddr = self.x.wrapping_add(offs);
                 let addr = self.get_ind_addr(zaddr as u16);
                 let val = self.read8(addr);
@@ -869,8 +870,46 @@ impl NMOS6502 {
 
                 Ok(0u8)
             }
+            Instruction(Opcode::LDY, Value::ZeroPage(offs)) => {
+                let val = self.read8(offs as u16);
+                println!("LDY ${:02X} = {:02X}", offs, val);
+                self.y = val;
+
+                self.set_nz(val);
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::LDA, Value::PreIdxIndY(offs)) => {
+                let zaddr = self.y.wrapping_add(offs);
+                let addr = self.get_ind_addr(zaddr as u16);
+                let val = self.read8(addr);
+                println!("LDA (${:02X},Y) @ {:02X} = {:04X} = {:02X}", offs, zaddr.wrapping_sub(1), addr, val);
+
+                self.set_nz(val);
+                self.a = val;
+
+                Ok(0u8)
+            }
+            Instruction(Opcode::INC, Value::ZeroPage(offs)) => {
+                let val = self.read8(offs as u16).wrapping_add(1);
+                println!("INC ${:02X} = {:02X}", offs, val);
+
+                self.set_nz(val);
+                self.write8(offs as u16, val);
+
+                Ok(0u8)
+            }
             instr => Err(format!("{:?}", instr)),
         }
+    }
+
+    pub fn nmi(&mut self) {
+        let pc = self.pc;
+        let p = self.p_flags.bits;
+        self.push16(pc);
+        self.push8(p);
+        
+        self.pc = (self.read8(0xFFFF) as u16) << 8 | (self.read8(0xFFFE) as u16);
     }
 
     pub fn get_ind_addr(&mut self, zaddr: u16) -> u16 {
@@ -900,36 +939,45 @@ impl NMOS6502 {
     }
 
     pub fn read8(&mut self, addr: u16) -> u8 {
+        let ppu = self.ppu.lock().unwrap();
+        let mem = self.mem.lock().unwrap();
         match addr {
-            0x2002 => self.ppu.borrow().ppustatus,
-            _ => self.mem.borrow_mut().read8(addr),
+            0x2002 => ppu.ppustatus,
+            _ => mem.read8(addr),
         }
     }
 
     pub fn read8_pc(&mut self) -> u8 {
-        let ret = self.mem.borrow().read8(self.pc);
+        let mem = self.mem.lock().unwrap();
+        let ret = mem.read8(self.pc);
         self.pc += 1;
         ret
     }
 
     pub fn read16_pc(&mut self) -> u16 {
-        let ret = (self.mem.borrow().read8(self.pc) as u16) | ((self.mem.borrow().read8(self.pc + 1) as u16) << 8);
+        let mem = self.mem.lock().unwrap();
+        let ret = (mem.read8(self.pc) as u16) | ((mem.read8(self.pc + 1) as u16) << 8);
         self.pc += 2;
         ret
     }
 
     fn write8(&mut self, addr: u16, val: u8) {
+        let mut ppu = self.ppu.lock().unwrap();
         match addr {
-            0x2000...0x2007 => self.ppu.borrow_mut().write8(addr, val),
+            0x2000...0x2007 => ppu.write8(addr, val),
             0x4010 => println!("APU: DMC @{:04X} = {:02X}", addr, val),
-            0x4014 => self.ppu.borrow_mut().oamdma(val),
+            0x4014 => ppu.oamdma(val),
             0x4015 => println!("APU: Status @{:04X} = {:02X}", addr, val),
-            _ => self.mem.borrow_mut().write8(addr, val),
+            _ => {
+                let mut mem = self.mem.lock().unwrap();
+                mem.write8(addr, val)
+            }
         }
     }
 
     fn push8(&mut self, val: u8) {
-        self.mem.borrow_mut().write8(0x100 | self.sp as u16, val);
+        let mut mem = self.mem.lock().unwrap();
+        mem.write8(0x100 | self.sp as u16, val);
         self.sp -= 1;
     }
 
@@ -939,8 +987,9 @@ impl NMOS6502 {
     }
 
     fn pop8(&mut self) -> u8 {
+        let mem = self.mem.lock().unwrap();
         self.sp += 1;
-        let ret = self.mem.borrow().read8(0x100 | self.sp as u16);
+        let ret = mem.read8(0x100 | self.sp as u16);
         ret
     }
 

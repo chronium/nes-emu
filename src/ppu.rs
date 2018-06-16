@@ -1,8 +1,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::thread;
 
 use std::fmt;
 use std::fmt::Debug;
+use std::sync::{Arc, Mutex};
 
 use ppuregs::{PPUCTL, VRAMINC};
 use cart::NESCart;
@@ -10,12 +12,12 @@ use cpu::NMOS6502;
 use mem::Memory;
 
 const HEIGHT: u16 = 261;
-const WIDTH: u16 = 340; 
+const WIDTH: u16 = 340;
 
 #[derive(Clone)]
 pub struct PPU {
-    pub cart: Rc<RefCell<NESCart>>,
-    pub mem: Rc<RefCell<Memory>>,
+    pub cart: Arc<Mutex<NESCart>>,
+    pub mem: Arc<Mutex<Memory>>,
     pub ppuctl: PPUCTL,
     pub ppuaddr: u16,
     pub y: u16,
@@ -27,6 +29,7 @@ pub struct PPU {
     pub yscroll: u8,
     pub oamaddr: u8,
     pub oam: [u8; 0xFF],
+    pub cycles: u64,
 }
 
 impl Debug for PPU {
@@ -36,7 +39,7 @@ impl Debug for PPU {
 }
 
 impl PPU {
-    pub fn new(cart: Rc<RefCell<NESCart>>, mem: Rc<RefCell<Memory>>, ppuctl: u8) -> Self {
+    pub fn new(cart: Arc<Mutex<NESCart>>, mem: Arc<Mutex<Memory>>, ppuctl: u8) -> Self {
         PPU {
             cart: cart,
             mem: mem,
@@ -51,27 +54,36 @@ impl PPU {
             yscroll: 0u8,
             oamaddr: 0u8,
             oam: [0u8; 0xFF],
+            cycles: 0u64,
         }
     }
 
-    pub fn step(&mut self) {
-        if self.y == 241 {
-            self.ppustatus |= 0x80;
-        }
+    pub fn step(&mut self, cpu: Arc<Mutex<NMOS6502>>) {
+        self.cycles += 1;
 
-        if self.y >= 257 && self.y <= 320 {
-            self.oamaddr = 0;
-        }
+        if self.cycles > 29658 {
+            if self.y == 241 {
+                self.ppustatus |= 0x80;
+                if self.x == 1 && self.ppuctl.nmi {
+                    let mut cpu = cpu.lock().unwrap();
+                    cpu.nmi();
+                }
+            }
 
-        self.x += 1;
-        if self.x >= WIDTH {
-            self.y += 1;
-            self.x = 0;
-        }
+            if self.y >= 257 && self.y <= 320 {
+                self.oamaddr = 0;
+            }
 
-        if self.y >= HEIGHT {
-            self.y = 0;
-            self.ppustatus &= !0x80;
+            self.x += 1;
+            if self.x >= WIDTH {
+                self.y += 1;
+                self.x = 0;
+            }
+
+            if self.y >= HEIGHT {
+                self.y = 0;
+                self.ppustatus &= !0x80;
+            }
         }
     }
 
@@ -126,8 +138,10 @@ impl PPU {
 
         let from = (port as u16) << 8;
 
+        let mem = self.mem.lock().unwrap();
+
         for i in 0..0xFF {
-            self.oam[(self.oamaddr + i) as usize] = self.mem.borrow_mut().read8(from + i as u16);
+            self.oam[(self.oamaddr + i) as usize] = mem.read8(from + i as u16);
         }
     }
 }

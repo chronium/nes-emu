@@ -3,13 +3,14 @@ use cpu::NMOS6502;
 #[derive(Debug, PartialEq)]
 pub enum Value {
     Implied,
-    PreIdxInd(u8),
+    PreIdxIndX(u8),
     Immediate(u8),
     Absolute(u16),
     Relative(i8),
     ZeroPage(u8),
     ZeroPageX(u8),
     AbsoluteX(u16),
+    PreIdxIndY(u8),
 }
 
 macro_rules! imp {
@@ -33,7 +34,7 @@ macro_rules! zpg {
 }
 
 macro_rules! izx {
-    ($instr:ident, $cpu:ident) => {{ (2, (Instruction(Opcode::$instr, Value::PreIdxInd($cpu.read8_pc())))) }}
+    ($instr:ident, $cpu:ident) => {{ (2, (Instruction(Opcode::$instr, Value::PreIdxIndX($cpu.read8_pc())))) }}
 }
 
 macro_rules! zpx {
@@ -42,6 +43,10 @@ macro_rules! zpx {
 
 macro_rules! abx {
     ($instr:ident, $cpu:ident) => {{ (3, (Instruction(Opcode::$instr, Value::AbsoluteX($cpu.read16_pc())))) }}
+}
+
+macro_rules! izy {
+    ($instr:ident, $cpu:ident) => {{ (2, (Instruction(Opcode::$instr, Value::PreIdxIndY($cpu.read8_pc())))) }}
 }
 
 #[derive(Debug)]
@@ -77,9 +82,9 @@ pub enum Opcode {
     BCC,    // 90
     TYA,    // 98
     TXS,    // 9A
-    LDY,    // A0
+    LDY,    // A0 A4
     LDX,    // A2 AE
-    LDA,    // A1 A5 A9 AD
+    LDA,    // A1 A5 A9 AD B1
     TAY,    // A8
     TAX,    // AA
     BCS,    // B0
@@ -97,6 +102,7 @@ pub enum Opcode {
     NOP,    // EA
     BEQ,    // F0
     SED,    // F8
+    INC,    // E6
     Unknown(u8),
 }
 
@@ -151,6 +157,7 @@ impl Instruction {
             0xA0 => imm!(LDY, cpu),
             0xA1 => izx!(LDA, cpu),
             0xA2 => imm!(LDX, cpu),
+            0xA4 => zpg!(LDY, cpu),
             0xA5 => zpg!(LDA, cpu),
             0xA8 => imp!(TAY, cpu),
             0xA9 => imm!(LDA, cpu),
@@ -158,6 +165,7 @@ impl Instruction {
             0xAD => abs!(LDA, cpu),
             0xAE => abs!(LDX, cpu),
             0xB0 => rel!(BCS, cpu),
+            0xB1 => izy!(LDA, cpu),
             0xB8 => imp!(CLV, cpu),
             0xBA => imp!(TSX, cpu),
             0xC0 => imm!(CPY, cpu),
@@ -169,6 +177,7 @@ impl Instruction {
             0xD8 => imp!(CLD, cpu),
             0xE0 => imm!(CPX, cpu),
             0xE1 => izx!(SBC, cpu),
+            0xE6 => zpg!(INC, cpu),
             0xE8 => imp!(INX, cpu),
             0xE9 => imm!(SBC, cpu),
             0xEA => imp!(NOP, cpu),

@@ -7,3 +7,5 @@ authors = ["chronium <onlivechronium@gmail.com>"]
 clap = "*"
 minifb = "*"
 bitflags = "*"
+clock_ticks = "*"
+lazy_static = "*"
